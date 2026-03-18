@@ -7,7 +7,7 @@ import MessageBubble from "./MessageBubble";
 import Avatar from "./Avatar";
 import EmojiPicker from "emoji-picker-react";
 
-export default function ChatWindow() {
+export default function ChatWindow({ onBack }) {
   const { activeConversation, messages, loading, sendMessage, typingUsers, onlineUsers } = useChatStore();
   const { user } = useAuthStore();
   const [text, setText] = useState("");
@@ -94,7 +94,14 @@ export default function ChatWindow() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--wa-border)] bg-[var(--wa-panel-muted)]">
+      <div className="flex items-center gap-3 px-3 sm:px-4 py-3 border-b border-[var(--wa-border)] bg-[var(--wa-panel-muted)]">
+        <button
+          onClick={onBack}
+          className="md:hidden w-8 h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-lg flex items-center justify-center"
+          title="Back to chats"
+        >
+          ←
+        </button>
         <div className="relative">
           <Avatar src={otherParticipant?.avatar} name={convName} size="md" />
           {isOtherOnline && (
@@ -102,7 +109,7 @@ export default function ChatWindow() {
           )}
         </div>
         <div>
-          <p className="font-semibold text-[var(--wa-text)]">{convName}</p>
+          <p className="font-semibold text-[var(--wa-text)] truncate max-w-[52vw] sm:max-w-none">{convName}</p>
           <p className="text-xs text-[var(--wa-subtext)]">
             {isTyping ? (
               <span className="text-[#00a884] animate-pulse">typing...</span>
@@ -119,7 +126,7 @@ export default function ChatWindow() {
 
       {/* Messages */}
       <div
-        className="flex-1 overflow-y-auto px-4 py-5 space-y-2 chat-bg-pattern"
+        className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 sm:py-5 space-y-2 chat-bg-pattern"
         style={
           wallpaperUrl
             ? {
@@ -154,7 +161,7 @@ export default function ChatWindow() {
 
       {/* Media preview */}
       {mediaPreview && (
-        <div className="px-4 py-2 bg-[var(--wa-panel-muted)] border-t border-[var(--wa-border)]">
+        <div className="px-3 sm:px-4 py-2 bg-[var(--wa-panel-muted)] border-t border-[var(--wa-border)]">
           <div className="relative inline-block">
             {mediaFile?.type.startsWith("image/") ? (
               <img src={mediaPreview} alt="preview" className="h-20 rounded-lg object-cover" />
@@ -171,7 +178,7 @@ export default function ChatWindow() {
         </div>
       )}
       {mediaFile && !mediaPreview && (
-        <div className="px-4 py-2 bg-[var(--wa-panel-muted)] border-t border-[var(--wa-border)] flex items-center gap-2">
+        <div className="px-3 sm:px-4 py-2 bg-[var(--wa-panel-muted)] border-t border-[var(--wa-border)] flex items-center gap-2">
           <span className="text-2xl">📎</span>
           <span className="text-sm text-[var(--wa-text)] truncate">{mediaFile.name}</span>
           <button onClick={() => setMediaFile(null)} className="ml-auto text-red-500 text-sm">Remove</button>
@@ -179,9 +186,9 @@ export default function ChatWindow() {
       )}
 
       {/* Input */}
-      <form onSubmit={handleSend} className="flex items-end gap-2 px-4 py-3 bg-[var(--wa-panel-muted)] border-t border-[var(--wa-border)] relative">
+      <form onSubmit={handleSend} className="flex items-end gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-3 bg-[var(--wa-panel-muted)] border-t border-[var(--wa-border)] relative">
         {showEmoji && (
-          <div className="absolute bottom-16 left-4 z-50">
+          <div className="absolute bottom-14 left-2 sm:left-4 z-50">
             <EmojiPicker
               onEmojiClick={onEmojiClick}
               theme={document.documentElement.classList.contains("dark") ? "dark" : "light"}
@@ -190,11 +197,11 @@ export default function ChatWindow() {
           </div>
         )}
 
-        <button type="button" onClick={() => setShowEmoji(!showEmoji)} className="p-2 text-[var(--wa-subtext)] hover:text-[#00a884] transition text-xl">
+        <button type="button" onClick={() => setShowEmoji(!showEmoji)} className="p-2 text-[var(--wa-subtext)] hover:text-[#00a884] transition text-lg sm:text-xl">
           😊
         </button>
 
-        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-[var(--wa-subtext)] hover:text-[#00a884] transition text-xl">
+        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-[var(--wa-subtext)] hover:text-[#00a884] transition text-lg sm:text-xl">
           📎
         </button>
         <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
@@ -210,7 +217,7 @@ export default function ChatWindow() {
             }
           }}
           placeholder="Type a message..."
-          className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--wa-input-border)] bg-[var(--wa-input-bg)] text-[var(--wa-text)] focus:outline-none focus:ring-2 focus:ring-[#00a884]/25 text-sm"
+          className="flex-1 min-w-0 px-3 sm:px-4 py-2.5 rounded-lg border border-[var(--wa-input-border)] bg-[var(--wa-input-bg)] text-[var(--wa-text)] focus:outline-none focus:ring-2 focus:ring-[#00a884]/25 text-sm"
         />
 
         <button

@@ -65,10 +65,10 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-full md:w-[360px] flex flex-col border-r border-[var(--wa-border)] bg-[var(--wa-panel)]">
+    <aside className="w-full md:w-[360px] md:min-w-[320px] md:max-w-[380px] h-full flex flex-col border-r border-[var(--wa-border)] bg-[var(--wa-panel)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[var(--wa-panel-muted)] border-b border-[var(--wa-border)]">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-[var(--wa-panel-muted)] border-b border-[var(--wa-border)]">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="relative">
             <Avatar src={user?.avatar} name={user?.username} size="sm" />
             <button
@@ -79,19 +79,19 @@ export default function Sidebar() {
               ✎
             </button>
           </div>
-          <span className="font-semibold text-[var(--wa-text)]">{user?.username}</span>
+          <span className="font-semibold text-[var(--wa-text)] truncate">{user?.username}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowSearch(!showSearch)} className="w-8 h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)]" title="Search users">
+        <div className="flex items-center gap-1 sm:gap-2 pl-2">
+          <button onClick={() => setShowSearch(!showSearch)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-sm" title="Search users">
             ⌕
           </button>
-          <button onClick={() => setShowSettings(true)} className="w-8 h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)]" title="Settings">
+          <button onClick={() => setShowSettings(true)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-sm" title="Settings">
             ⚙
           </button>
-          <button onClick={toggleDark} className="w-8 h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)]" title="Toggle dark mode">
+          <button onClick={toggleDark} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-sm" title="Toggle dark mode">
             {darkMode ? "☼" : "☾"}
           </button>
-          <button onClick={logout} className="w-8 h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)]" title="Logout">
+          <button onClick={logout} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-sm" title="Logout">
             ⎋
           </button>
         </div>
@@ -99,7 +99,7 @@ export default function Sidebar() {
 
       {/* Search */}
       {showSearch && (
-        <div className="px-3 py-2 bg-[var(--wa-panel)] border-b border-[var(--wa-border)]">
+        <div className="px-2.5 sm:px-3 py-2 bg-[var(--wa-panel)] border-b border-[var(--wa-border)]">
           <input
             type="text"
             value={search}
@@ -136,7 +136,8 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto">
         <div className="px-3 pt-2 pb-2 border-b border-[var(--wa-border)]">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--wa-subtext)]">All users</p>
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowAllUsersSection((prev) => !prev)}
                 className="w-6 h-6 rounded-full bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-xs flex items-center justify-center hover:bg-[#00a884] hover:text-white"
@@ -144,15 +145,14 @@ export default function Sidebar() {
               >
                 👥
               </button>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--wa-subtext)]">All users</p>
+              <button
+                onClick={() => navigate("/all-users")}
+                className="w-6 h-6 rounded-full bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-xs flex items-center justify-center hover:bg-[#00a884] hover:text-white"
+                title="Open All Users page"
+              >
+                ↗
+              </button>
             </div>
-            <button
-              onClick={() => navigate("/all-users")}
-              className="w-6 h-6 rounded-full bg-[var(--wa-hover)] text-[var(--wa-subtext)] text-xs flex items-center justify-center hover:bg-[#00a884] hover:text-white"
-              title="Open All Users page"
-            >
-              ↗
-            </button>
           </div>
           {showAllUsersSection && (
             <>

@@ -29,9 +29,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-3 sm:p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-5 sm:p-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="text-4xl mb-2">💬</div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create account</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Join the conversation</p>

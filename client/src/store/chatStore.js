@@ -128,4 +128,8 @@ export const useChatStore = create((set, get) => ({
       },
     }));
   },
+
+  clearActiveConversation: () => {
+    set({ activeConversation: null, messages: [], loading: false, activeLoadRequestId: null });
+  },
 }));

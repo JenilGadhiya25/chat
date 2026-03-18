@@ -16,6 +16,7 @@ export default function ChatPage() {
     clearTyping,
     updateEditedMessage,
     activeConversation,
+    clearActiveConversation,
   } = useChatStore();
 
   useEffect(() => {
@@ -51,13 +52,15 @@ export default function ChatPage() {
   }, []);
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[var(--wa-app-bg)]">
+    <div className="relative h-[100dvh] overflow-hidden bg-[var(--wa-app-bg)]">
       <div className="absolute top-0 left-0 right-0 h-32 bg-[var(--wa-topbar)]" />
-      <div className="relative h-full p-0 md:p-5">
+      <div className="relative h-full p-0 md:p-4 lg:p-5">
         <div className="h-full max-w-[1500px] mx-auto flex bg-[var(--wa-shell)] shadow-[0_6px_24px_rgba(11,20,26,0.22)] border border-[var(--wa-border)]">
-          <Sidebar />
-          <main className="flex-1 flex flex-col min-w-0">
-            {activeConversation ? <ChatWindow /> : <NoChatSelected />}
+          <div className={`${activeConversation ? "hidden" : "flex"} md:flex h-full w-full md:w-auto`}>
+            <Sidebar />
+          </div>
+          <main className={`${activeConversation ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0 h-full`}>
+            {activeConversation ? <ChatWindow onBack={clearActiveConversation} /> : <NoChatSelected />}
           </main>
         </div>
       </div>

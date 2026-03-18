@@ -33,19 +33,19 @@ export default function AllUsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--wa-app-bg)] p-4 md:p-8">
+    <div className="min-h-[100dvh] bg-[var(--wa-app-bg)] p-3 sm:p-4 md:p-8">
       <div className="max-w-3xl mx-auto bg-[var(--wa-panel)] border border-[var(--wa-border)] rounded-xl overflow-hidden shadow-lg">
-        <div className="px-4 py-3 bg-[var(--wa-panel-muted)] border-b border-[var(--wa-border)] flex items-center justify-between">
+        <div className="px-3 sm:px-4 py-3 bg-[var(--wa-panel-muted)] border-b border-[var(--wa-border)] flex items-center justify-between gap-2">
           <h1 className="text-lg font-semibold text-[var(--wa-text)]">All Users</h1>
           <button
             onClick={() => navigate("/")}
-            className="px-3 py-1.5 rounded-lg text-sm bg-[var(--wa-hover)] text-[var(--wa-subtext)]"
+            className="px-3 py-1.5 rounded-lg text-sm bg-[var(--wa-hover)] text-[var(--wa-subtext)] whitespace-nowrap"
           >
             Back
           </button>
         </div>
 
-        <div className="p-4 border-b border-[var(--wa-border)]">
+        <div className="p-3 sm:p-4 border-b border-[var(--wa-border)]">
           <input
             type="text"
             value={search}
@@ -55,7 +55,7 @@ export default function AllUsersPage() {
           />
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto">
+        <div className="max-h-[72dvh] overflow-y-auto">
           {loading && <p className="p-4 text-sm text-[var(--wa-subtle)]">Loading users...</p>}
           {!loading && users.length === 0 && <p className="p-4 text-sm text-[var(--wa-subtle)]">No users found.</p>}
           {users.map((u) => (
