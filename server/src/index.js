@@ -93,20 +93,20 @@ initSocket(io);
 
 // Connect to DB then start server
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/chatapp";
+const PORT = process.env.PORT || 8000;
 
 mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected:", MONGO_URI.split("@").pop() || MONGO_URI);
-    httpServer.listen(process.env.PORT || 8000, "0.0.0.0", () =>
-      console.log(`🚀 Server running on port ${process.env.PORT || 8000}`)
+    httpServer.listen(PORT, "0.0.0.0", () =>
+      console.log(`🚀 Server running on port ${PORT}`)
     );
   })
   .catch((err) => {
     console.error("❌ MongoDB connection failed:", err.message);
-    // Still start the server so Render doesn't kill the process
-    // API calls will fail gracefully with 500 errors
-    httpServer.listen(process.env.PORT || 8000, "0.0.0.0", () =>
-      console.log(`⚠️  Server running WITHOUT database on port ${process.env.PORT || 8000}`)
+    // Still bind the port so Render doesn't kill the process
+    httpServer.listen(PORT, "0.0.0.0", () =>
+      console.log(`⚠️  Server running WITHOUT database on port ${PORT}`)
     );
   });
