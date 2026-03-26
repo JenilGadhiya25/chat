@@ -48,4 +48,7 @@ router.post("/login", async (req, res) => {
 // GET /api/auth/me
 router.get("/me", protect, (req, res) => res.json(req.user));
 
+// GET /api/auth/ping — health check / wake-up for Render free tier
+router.get("/ping", (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
 export default router;

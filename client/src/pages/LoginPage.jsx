@@ -1,15 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
 import QRLogin from "../components/QRLogin";
+import api from "../lib/axios";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [serverReady, setServerReady] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
+
+  // Ping the server as soon as the page loads — wakes up Render free tier
+  useEffect(() => {
+    const wake = async () => {
+      try {
+        await api.get("/auth/ping");
+      } catch {
+        // ignore — just waking up
+      } finally {
+        setServerReady(true);
+      }
+    };
+    wake();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,10 +91,19 @@ export default function LoginPage() {
               </div>
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold rounded-lg transition disabled:opacity-60 text-sm"
+                disabled={loading || !serverReady}
+                className="w-full py-3 bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold rounded-lg transition disabled:opacity-60 text-sm flex items-center justify-center gap-2"
               >
-                {loading ? "Signing in..." : "Sign In"}
+                {loading ? (
+                  "Signing in..."
+                ) : !serverReady ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
               </button>
             </form>
 

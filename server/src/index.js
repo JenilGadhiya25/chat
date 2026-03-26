@@ -80,6 +80,7 @@ app.use("/api/status", statusRoutes);
 app.use("/api/ai", aiRoutes);
 
 app.get("/", (_req, res) => res.json({ status: "Chat API running" }));
+app.get("/ping", (_req, res) => res.json({ ok: true }));
 
 // Global error handler
 app.use((err, _req, res, _next) => {

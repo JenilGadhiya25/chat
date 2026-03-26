@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../lib/axios";
 
 // Country list — common ones first
 const COUNTRIES = [
@@ -41,6 +42,11 @@ export default function PhonePage() {
   const [phone, setPhone] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
+
+  // Wake up Render server immediately when user lands on this page
+  useEffect(() => {
+    api.get("/auth/ping").catch(() => {});
+  }, []);
 
   const filteredCountries = COUNTRIES.filter((c) =>
     c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
