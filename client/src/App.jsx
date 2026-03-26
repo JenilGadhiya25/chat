@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useAuthStore } from "./store/authStore";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ChatPage from "./pages/ChatPage";
@@ -11,15 +10,13 @@ import { useEffect } from "react";
 import { initTheme } from "./lib/theme";
 
 function PrivateRoute({ children }) {
-  const { token } = useAuthStore();
+  const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/phone" replace />;
 }
 
 function GuestRoute({ children }) {
-  const { token } = useAuthStore();
-  // Also check localStorage directly — QRLogin writes there before zustand re-renders
-  const hasToken = token || !!localStorage.getItem("token");
-  return !hasToken ? children : <Navigate to="/" replace />;
+  const token = localStorage.getItem("token");
+  return !token ? children : <Navigate to="/" replace />;
 }
 
 export default function App() {

@@ -28,8 +28,9 @@ export const connectSocket = (userId) => {
 
   socket = io(SERVER_URL, {
     query: { userId },
-    withCredentials: true,
     transports: ["websocket", "polling"],
+    reconnectionAttempts: 5,
+    reconnectionDelay: 2000,
   });
 
   socket.on("connect", () => console.log("Socket connected:", socket.id));

@@ -22,9 +22,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(form.email, form.password);
-      setTimeout(() => navigate("/", { replace: true }), 50);
+      navigate("/", { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || "Login failed");
+      toast.error(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }

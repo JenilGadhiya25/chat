@@ -16,8 +16,7 @@ export default function RegisterPage() {
     try {
       await register(form.username, form.email, form.password);
       toast.success("Account created!");
-      // Small delay ensures zustand + localStorage are both set before route check
-      setTimeout(() => navigate("/", { replace: true }), 50);
+      navigate("/", { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || "Registration failed");
     } finally {
