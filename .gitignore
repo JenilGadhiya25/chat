@@ -11,5 +11,6 @@ dist/
 
 server/uploads/
 *.log
-
+.env
+server/.env
 .DS_Store
