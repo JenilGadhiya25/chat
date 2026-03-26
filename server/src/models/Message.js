@@ -13,6 +13,12 @@ const messageSchema = new mongoose.Schema(
     status: { type: String, enum: ["sent", "delivered", "seen"], default: "sent" },
     deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     isEdited: { type: Boolean, default: false },
+    reactions: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        emoji: { type: String, required: true },
+      },
+    ],
   },
   { timestamps: true }
 );

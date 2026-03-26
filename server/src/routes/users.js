@@ -61,6 +61,9 @@ router.put(
         updates.email = email;
       }
 
+      const avatarColor = req.body.avatarColor?.trim();
+      const backgroundColor = req.body.backgroundColor?.trim();
+
       const avatarFile = req.files?.avatar?.[0];
       if (avatarFile) {
         if (!avatarFile.mimetype.startsWith("image/")) {
@@ -72,6 +75,9 @@ router.put(
           return res.status(400).json({ message: "Invalid avatar preset" });
         }
         updates.avatar = avatarPreset;
+      } else if (avatarColor) {
+        // Store colour string directly (e.g. "#00a884" or gradient)
+        updates.avatar = `color:${avatarColor}`;
       }
 
       const backgroundFile = req.files?.background?.[0];
@@ -85,6 +91,8 @@ router.put(
           return res.status(400).json({ message: "Invalid background preset" });
         }
         updates.chatBackground = backgroundPreset;
+      } else if (backgroundColor) {
+        updates.chatBackground = `color:${backgroundColor}`;
       }
 
       if (req.body.clearBackground === "true") {

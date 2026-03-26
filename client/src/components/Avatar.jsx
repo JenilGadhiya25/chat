@@ -1,16 +1,18 @@
+import { useEffect, useState } from "react";
 import { SERVER_URL } from "../lib/axios";
 
-// Reusable avatar with fallback initials
 const sizes = {
   sm: "w-8 h-8 text-xs",
   md: "w-10 h-10 text-sm",
-  lg: "w-14 h-14 text-base",
+  lg: "w-12 h-12 text-base",
+  xl: "w-16 h-16 text-xl",
+  xxl: "w-28 h-28 text-3xl",
 };
 
 const colors = [
-  "bg-red-400", "bg-orange-400", "bg-yellow-400",
-  "bg-green-400", "bg-teal-400", "bg-blue-400",
-  "bg-indigo-400", "bg-purple-400", "bg-pink-400",
+  "bg-[#00a884]", "bg-[#0088cc]", "bg-[#8e44ad]",
+  "bg-[#e74c3c]", "bg-[#f39c12]", "bg-[#16a085]",
+  "bg-[#2980b9]", "bg-[#d35400]", "bg-[#c0392b]",
 ];
 
 function getColor(name = "") {
@@ -19,29 +21,44 @@ function getColor(name = "") {
   return colors[Math.abs(hash) % colors.length];
 }
 
+const resolveAvatar = (src) => {
+  if (!src) return { type: "none" };
+  if (src.startsWith("color:")) return { type: "color", value: src.slice(6) };
+  if (src.startsWith("http") || src.startsWith("/presets/")) return { type: "img", value: src };
+  return { type: "img", value: `${SERVER_URL}${src}` };
+};
+
 export default function Avatar({ src, name = "", size = "md" }) {
+  const [imgBroken, setImgBroken] = useState(false);
   const initials = name.slice(0, 2).toUpperCase();
   const sizeClass = sizes[size] || sizes.md;
-  const resolvedSrc = src
-    ? src.startsWith("http")
-      ? src
-      : src.startsWith("/presets/")
-        ? src
-      : `${SERVER_URL}${src}`
-    : "";
+  const resolved = resolveAvatar(src);
+  useEffect(() => {
+    setImgBroken(false);
+  }, [src]);
 
-  if (resolvedSrc) {
+  if (resolved.type === "img" && !imgBroken) {
     return (
       <img
-        src={resolvedSrc}
+        src={resolved.value}
         alt={name}
         className={`${sizeClass} rounded-full object-cover flex-shrink-0`}
+        onError={() => setImgBroken(true)}
       />
     );
   }
 
+  if (resolved.type === "color") {
+    return (
+      <div className={`${sizeClass} rounded-full flex items-center justify-center text-white font-medium flex-shrink-0`}
+        style={{ background: resolved.value }}>
+        {initials || "?"}
+      </div>
+    );
+  }
+
   return (
-    <div className={`${sizeClass} ${getColor(name)} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
+    <div className={`${sizeClass} ${getColor(name)} rounded-full flex items-center justify-center text-white font-medium flex-shrink-0`}>
       {initials || "?"}
     </div>
   );

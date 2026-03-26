@@ -9,6 +9,8 @@ import { fileURLToPath } from "url";
 import authRoutes from "./routes/auth.js";
 import messageRoutes from "./routes/messages.js";
 import userRoutes from "./routes/users.js";
+import statusRoutes from "./routes/status.js";
+import aiRoutes from "./routes/ai.js";
 import { initSocket } from "./socket/socket.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -18,22 +20,24 @@ const app = express();
 const httpServer = createServer(app);
 
 const configuredClientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+const LAN_IP = process.env.LAN_IP || "192.168.29.250";
+
 const allowedOrigins = new Set([
   configuredClientUrl,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  `http://${LAN_IP}:5173`,
 ]);
 
 const isAllowedOrigin = (origin) => {
-  if (!origin) return true; // non-browser clients (curl/postman/server-to-server)
+  if (!origin) return true;
   if (allowedOrigins.has(origin)) return true;
-
   try {
     const url = new URL(origin);
-    const isLocalHost =
-      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+    const isLocal =
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === LAN_IP) &&
       /^http:$/.test(url.protocol);
-    return isLocalHost;
+    return isLocal;
   } catch {
     return false;
   }
@@ -58,12 +62,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded media files
-app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/status", statusRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.get("/", (_req, res) => res.json({ status: "Chat API running" }));
 

@@ -3,76 +3,87 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --wa-app-bg: #e5ddd5;
-    --wa-topbar: #00a884;
-    --wa-shell: #f0f2f5;
-    --wa-border: #d1d7db;
-    --wa-panel: #ffffff;
-    --wa-panel-muted: #f0f2f5;
-    --wa-hover: #f5f6f6;
-    --wa-active: #e9edef;
-    --wa-text: #111b21;
-    --wa-subtext: #667781;
-    --wa-subtle: #8696a0;
-    --wa-input-bg: #ffffff;
-    --wa-input-border: #e2e5e7;
-    --wa-bubble-own: #d9fdd3;
-    --wa-bubble-other: #ffffff;
-  }
-
-  .dark {
-    --wa-app-bg: #111b21;
-    --wa-topbar: #0b8f72;
-    --wa-shell: #202c33;
-    --wa-border: #2a3942;
-    --wa-panel: #111b21;
-    --wa-panel-muted: #202c33;
-    --wa-hover: #2a3942;
-    --wa-active: #2f3b43;
-    --wa-text: #e9edef;
-    --wa-subtext: #aebac1;
-    --wa-subtle: #8696a0;
-    --wa-input-bg: #2a3942;
-    --wa-input-border: #3b4a54;
-    --wa-bubble-own: #005c4b;
-    --wa-bubble-other: #202c33;
-  }
-
   body {
-    @apply font-sans;
-    background: var(--wa-app-bg);
-    color: var(--wa-text);
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans;
   }
   * {
     @apply box-border;
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { @apply bg-transparent; }
-::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-600 rounded-full; }
+/* Custom scrollbar - WhatsApp style */
+::-webkit-scrollbar { 
+  width: 6px; 
+  height: 6px;
+}
+::-webkit-scrollbar-track { 
+  @apply bg-transparent; 
+}
+::-webkit-scrollbar-thumb { 
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full; 
+}
+::-webkit-scrollbar-thumb:hover { 
+  @apply bg-gray-400 dark:bg-gray-500; 
+}
 
 /* Message bubble animations */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.msg-enter { animation: fadeInUp 0.2s ease-out; }
-
-.chat-bg-pattern {
-  background-color: #efeae2;
-  background-image:
-    radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    radial-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-  background-size: 24px 24px, 16px 16px;
-  background-position: 0 0, 8px 8px;
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
 
-.dark .chat-bg-pattern {
-  background-color: #0b141a;
-  background-image:
-    radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+.msg-enter { 
+  animation: fadeInUp 0.15s ease-out; 
+}
+
+/* WhatsApp green accent */
+.text-whatsapp {
+  color: #00a884;
+}
+
+.bg-whatsapp {
+  background-color: #00a884;
+}
+
+.bg-whatsapp-dark {
+  background-color: #005c4b;
+}
+
+/* Message bubble tails */
+.message-tail-left::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 13px 8px;
+  border-color: transparent transparent white transparent;
+}
+
+.dark .message-tail-left::before {
+  border-color: transparent transparent rgb(55, 65, 81) transparent;
+}
+
+.message-tail-right::before {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 8px 13px 0;
+  border-color: transparent transparent #d9fdd3 transparent;
+}
+
+.dark .message-tail-right::before {
+  border-color: transparent transparent #005c4b transparent;
 }

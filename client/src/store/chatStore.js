@@ -7,50 +7,137 @@ export const useChatStore = create((set, get) => ({
   activeConversation: null,
   messages: [],
   onlineUsers: [],
-  typingUsers: {}, // { conversationId: [userId, ...] }
+  typingUsers: {},
+  callLogs: [],
   loading: false,
-  activeLoadRequestId: null,
 
   setOnlineUsers: (users) => set({ onlineUsers: users }),
 
   fetchConversations: async () => {
-    const { data } = await api.get("/messages/conversations");
-    set({ conversations: data });
+    try {
+      const { data } = await api.get("/messages/conversations");
+      set({ conversations: data });
+    } catch {
+      // Silently fail — user will see empty list
+    }
+  },
+
+  fetchCallLogs: async () => {
+    try {
+      const { data } = await api.get("/messages/calls");
+      set({ callLogs: data });
+    } catch {
+      set({ callLogs: [] });
+    }
   },
 
   setActiveConversation: async (conv) => {
-    const { activeConversation, loading } = get();
-    if (activeConversation?._id === conv._id && loading) return;
-    if (activeConversation?._id === conv._id && !loading) return;
+    // Avoid reloading the same conversation
+    if (get().activeConversation?._id === conv._id) return;
 
-    const requestId = `${conv._id}-${Date.now()}`;
-    set({ activeConversation: conv, messages: [], loading: true, activeLoadRequestId: requestId });
+    set({ activeConversation: conv, messages: [], loading: true });
+
     const socket = getSocket();
     if (socket) socket.emit("joinConversation", conv._id);
-    const { data } = await api.get(`/messages/${conv._id}`);
-    if (get().activeLoadRequestId !== requestId) return;
-    set({ messages: data, loading: false, activeLoadRequestId: null });
+
+    try {
+      const { data } = await api.get(`/messages/${conv._id}`);
+      // Only apply if this conversation is still active
+      if (get().activeConversation?._id === conv._id) {
+        set({ messages: data, loading: false });
+      }
+    } catch {
+      set({ loading: false });
+    }
   },
 
   startConversation: async (userId) => {
     const { data } = await api.post("/messages/conversations", { userId });
-    const { conversations } = get();
-    const exists = conversations.find((c) => c._id === data._id);
-    if (!exists) set({ conversations: [data, ...conversations] });
-    if (get().activeConversation?._id !== data._id) {
-      await get().setActiveConversation(data);
-    }
+    set((s) => {
+      const exists = s.conversations.find((c) => c._id === data._id);
+      return exists
+        ? s
+        : { conversations: [data, ...s.conversations] };
+    });
+    await get().setActiveConversation(data);
     return data;
   },
 
-  createGroup: async (groupName, participants) => {
-    const { data } = await api.post("/messages/conversations", {
-      isGroup: true,
-      groupName,
-      participants,
+  createGroup: async (groupName, participants, groupAvatar, groupDescription) => {
+    const fd = new FormData();
+    fd.append("isGroup", "true");
+    fd.append("groupName", groupName);
+    fd.append("participants", JSON.stringify(participants));
+    if (groupDescription) fd.append("groupDescription", groupDescription);
+    if (groupAvatar) fd.append("groupAvatar", groupAvatar);
+    const { data } = await api.post("/messages/conversations", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     set((s) => ({ conversations: [data, ...s.conversations] }));
     get().setActiveConversation(data);
+    return data;
+  },
+
+  updateConversationInState: (conversation) => {
+    if (!conversation?._id) return;
+    set((s) => ({
+      conversations: s.conversations.map((c) => (c._id === conversation._id ? conversation : c)),
+      activeConversation:
+        s.activeConversation?._id === conversation._id ? conversation : s.activeConversation,
+    }));
+  },
+
+  syncUserInConversations: (updatedUser) => {
+    if (!updatedUser?._id) return;
+    set((s) => {
+      const mapParticipant = (p) => (p?._id === updatedUser._id ? { ...p, ...updatedUser } : p);
+      const mapMessageSender = (m) => (
+        m?.sender?._id === updatedUser._id
+          ? { ...m, sender: { ...m.sender, ...updatedUser } }
+          : m
+      );
+      return {
+        conversations: s.conversations.map((conv) => ({
+          ...conv,
+          participants: conv.participants?.map(mapParticipant) || conv.participants,
+          admins: conv.admins?.map((a) => (a?._id === updatedUser._id ? { ...a, ...updatedUser } : a)) || conv.admins,
+          createdBy: conv.createdBy?._id === updatedUser._id ? { ...conv.createdBy, ...updatedUser } : conv.createdBy,
+        })),
+        activeConversation: s.activeConversation
+          ? {
+              ...s.activeConversation,
+              participants: s.activeConversation.participants?.map(mapParticipant) || s.activeConversation.participants,
+              admins: s.activeConversation.admins?.map((a) => (a?._id === updatedUser._id ? { ...a, ...updatedUser } : a)) || s.activeConversation.admins,
+              createdBy: s.activeConversation.createdBy?._id === updatedUser._id
+                ? { ...s.activeConversation.createdBy, ...updatedUser }
+                : s.activeConversation.createdBy,
+            }
+          : s.activeConversation,
+        messages: s.messages.map(mapMessageSender),
+      };
+    });
+  },
+
+  pinConversation: async (convId) => {
+    const { data } = await api.post(`/messages/conversations/${convId}/pin`);
+    set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));
+  },
+
+  unpinConversation: async (convId) => {
+    const { data } = await api.post(`/messages/conversations/${convId}/unpin`);
+    set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));
+  },
+
+  archiveConversation: async (convId) => {
+    const { data } = await api.post(`/messages/conversations/${convId}/archive`);
+    set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));
+    // If this was the active conversation, deselect it
+    if (get().activeConversation?._id === convId) set({ activeConversation: null });
+  },
+
+  unarchiveConversation: async (convId) => {
+    const { data } = await api.post(`/messages/conversations/${convId}/unarchive`);
+    set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));
   },
 
   sendMessage: async (conversationId, text, mediaFile) => {
@@ -61,36 +148,49 @@ export const useChatStore = create((set, get) => ({
     const { data } = await api.post(`/messages/${conversationId}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    set((s) => {
-      const exists = s.messages.some((m) => m._id === data._id);
-      if (exists) return s;
-      return { messages: [...s.messages, data] };
-    });
-    // Update last message in conversation list
+
+    // Add to messages list (sender side — REST response)
     set((s) => ({
-      conversations: s.conversations.map((c) =>
-        c._id === conversationId ? { ...c, lastMessage: data, updatedAt: new Date() } : c
-      ),
+      messages: s.messages.some((m) => m._id === data._id)
+        ? s.messages
+        : [...s.messages, data],
     }));
+
+    // Bubble conversation to top with latest message
+    set((s) => ({
+      conversations: [
+        { ...s.conversations.find((c) => c._id === conversationId), lastMessage: data, updatedAt: new Date() },
+        ...s.conversations.filter((c) => c._id !== conversationId),
+      ],
+    }));
+
     return data;
   },
 
+  // Called by socket "newMessage" event (receiver side)
   receiveMessage: (message) => {
-    const { activeConversation, conversations } = get();
+    const { activeConversation } = get();
+
+    // Append to messages if this conversation is open
     if (activeConversation?._id === message.conversationId) {
-      set((s) => {
-        const exists = s.messages.some((m) => m._id === message._id);
-        if (exists) return s;
-        return { messages: [...s.messages, message] };
-      });
+      set((s) => ({
+        messages: s.messages.some((m) => m._id === message._id)
+          ? s.messages
+          : [...s.messages, message],
+      }));
     }
-    set((s) => ({
-      conversations: s.conversations.map((c) =>
-        c._id === message.conversationId
-          ? { ...c, lastMessage: message, updatedAt: new Date() }
-          : c
-      ),
-    }));
+
+    // Bubble conversation to top
+    set((s) => {
+      const existing = s.conversations.find((c) => c._id === message.conversationId);
+      if (!existing) return s;
+      return {
+        conversations: [
+          { ...existing, lastMessage: message, updatedAt: new Date() },
+          ...s.conversations.filter((c) => c._id !== message.conversationId),
+        ],
+      };
+    });
   },
 
   deleteMessage: async (messageId) => {
@@ -106,6 +206,20 @@ export const useChatStore = create((set, get) => ({
   },
 
   updateEditedMessage: (message) => {
+    set((s) => ({
+      messages: s.messages.map((m) => (m._id === message._id ? message : m)),
+    }));
+  },
+
+  reactToMessage: async (messageId, emoji) => {
+    const { data } = await api.post(`/messages/${messageId}/reaction`, { emoji });
+    set((s) => ({
+      messages: s.messages.map((m) => (m._id === messageId ? data : m)),
+    }));
+    return data;
+  },
+
+  updateMessageReaction: (message) => {
     set((s) => ({
       messages: s.messages.map((m) => (m._id === message._id ? message : m)),
     }));
@@ -129,7 +243,54 @@ export const useChatStore = create((set, get) => ({
     }));
   },
 
-  clearActiveConversation: () => {
-    set({ activeConversation: null, messages: [], loading: false, activeLoadRequestId: null });
+  deleteConversation: async (convId) => {
+    await api.delete(`/messages/conversations/${convId}`);
+    set((s) => ({
+      conversations: s.conversations.filter((c) => c._id !== convId),
+      activeConversation: s.activeConversation?._id === convId ? null : s.activeConversation,
+      messages: s.activeConversation?._id === convId ? [] : s.messages,
+    }));
+  },
+
+  blockUser: async (userId) => {
+    await api.post(`/messages/block/${userId}`);
+  },
+
+  unblockUser: async (userId) => {
+    await api.post(`/messages/unblock/${userId}`);
+  },
+
+  addGroupAdmin: async (convId, userId) => {
+    const { data } = await api.post(`/messages/conversations/${convId}/admins`, { userId });
+    get().updateConversationInState(data);
+    return data;
+  },
+
+  removeGroupAdmin: async (convId, userId) => {
+    const { data } = await api.delete(`/messages/conversations/${convId}/admins/${userId}`);
+    get().updateConversationInState(data);
+    return data;
+  },
+
+  removeGroupParticipant: async (convId, userId) => {
+    const { data } = await api.delete(`/messages/conversations/${convId}/participants/${userId}`);
+    get().updateConversationInState(data);
+    return data;
+  },
+
+  updateGroupProfile: async (convId, payload) => {
+    const config =
+      payload instanceof FormData
+        ? { headers: { "Content-Type": "multipart/form-data" } }
+        : undefined;
+    const { data } = await api.put(`/messages/conversations/${convId}/group-profile`, payload, config);
+    get().updateConversationInState(data);
+    return data;
+  },
+
+  logCall: async (conversationId, payload) => {
+    const { data } = await api.post(`/messages/conversations/${conversationId}/calls`, payload || {});
+    set((s) => ({ callLogs: [data, ...s.callLogs] }));
+    return data;
   },
 }));
