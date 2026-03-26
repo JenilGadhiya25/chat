@@ -75,7 +75,7 @@ export default function PhonePage() {
               Enter your phone number
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed">
-              WhatsApp will send an SMS to verify your phone number.
+              Enter your phone number to continue to WhatsApp.
             </p>
 
             <form onSubmit={handleNext} className="space-y-4">
