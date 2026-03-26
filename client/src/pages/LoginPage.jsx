@@ -9,22 +9,12 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [serverReady, setServerReady] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
 
-  // Ping the server as soon as the page loads — wakes up Render free tier
+  // Silently wake up Render on page load — never blocks the UI
   useEffect(() => {
-    const wake = async () => {
-      try {
-        await api.get("/auth/ping");
-      } catch {
-        // ignore — just waking up
-      } finally {
-        setServerReady(true);
-      }
-    };
-    wake();
+    api.get("/auth/ping").catch(() => {});
   }, []);
 
   const handleSubmit = async (e) => {
@@ -91,19 +81,10 @@ export default function LoginPage() {
               </div>
               <button
                 type="submit"
-                disabled={loading || !serverReady}
-                className="w-full py-3 bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold rounded-lg transition disabled:opacity-60 text-sm flex items-center justify-center gap-2"
+                disabled={loading}
+                className="w-full py-3 bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold rounded-lg transition disabled:opacity-60 text-sm"
               >
-                {loading ? (
-                  "Signing in..."
-                ) : !serverReady ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
+                {loading ? "Signing in..." : "Sign In"}
               </button>
             </form>
 
