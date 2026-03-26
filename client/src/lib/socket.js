@@ -3,13 +3,8 @@ import { io } from "socket.io-client";
 const resolveServerUrl = () => {
   const envUrl = (import.meta.env.VITE_SERVER_URL || "").trim();
   if (envUrl) return envUrl.replace(/\/$/, "");
-
-  if (import.meta.env.DEV) return "http://localhost:8000";
-
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin.replace(/\/$/, "");
-  }
-  return "";
+  if (!import.meta.env.DEV) return "";
+  return "http://localhost:8000";
 };
 
 const SERVER_URL = resolveServerUrl();
