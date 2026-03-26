@@ -44,7 +44,7 @@ export default function LoginPage() {
         <div className="bg-white dark:bg-[#1f2c33] rounded-2xl shadow-xl overflow-hidden">
           <div className="px-8 pt-8 pb-6">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-1">Sign in</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Phone verified. Enter your email and password to continue</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enter your email and password to continue</p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

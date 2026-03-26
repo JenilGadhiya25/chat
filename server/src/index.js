@@ -19,11 +19,18 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const app = express();
 const httpServer = createServer(app);
 
-const configuredClientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+const configuredClientUrls = [
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URLS,
+]
+  .filter(Boolean)
+  .flatMap((v) => String(v).split(","))
+  .map((v) => v.trim())
+  .filter(Boolean);
 const LAN_IP = process.env.LAN_IP || "192.168.29.250";
 
 const allowedOrigins = new Set([
-  configuredClientUrl,
+  ...configuredClientUrls,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   `http://${LAN_IP}:5173`,
@@ -34,10 +41,11 @@ const isAllowedOrigin = (origin) => {
   if (allowedOrigins.has(origin)) return true;
   try {
     const url = new URL(origin);
+    const isNetlify = /^https:$/.test(url.protocol) && url.hostname.endsWith(".netlify.app");
     const isLocal =
       (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === LAN_IP) &&
       /^http:$/.test(url.protocol);
-    return isLocal;
+    return isLocal || isNetlify;
   } catch {
     return false;
   }

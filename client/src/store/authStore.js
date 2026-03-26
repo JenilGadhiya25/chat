@@ -8,16 +8,9 @@ export const useAuthStore = create((set, get) => ({
   token: localStorage.getItem("token") || null,
 
   login: async (email, password) => {
-    const phoneVerifyToken = localStorage.getItem("phone_verify_token");
-    const { data } = await api.post(
-      "/auth/login",
-      { email, password },
-      { headers: { "x-phone-verify-token": phoneVerifyToken || "" } }
-    );
+    const { data } = await api.post("/auth/login", { email, password });
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
-    localStorage.removeItem("phone_verify_token");
-    localStorage.removeItem("phone_verify_expires_at");
     connectSocket(data.user._id);
     set({ user: data.user, token: data.token });
   },
@@ -45,8 +38,6 @@ export const useAuthStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("phone_verify_token");
-    localStorage.removeItem("phone_verify_expires_at");
     disconnectSocket();
     set({ user: null, token: null });
   },
