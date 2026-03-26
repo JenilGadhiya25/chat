@@ -5,13 +5,21 @@ import { useAuthStore } from "../store/authStore";
 import { connectSocket } from "../lib/socket";
 import { useNavigate } from "react-router-dom";
 
-// Desktop socket connects to localhost
+// Desktop socket connects to the configured server
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8000";
 const LAN_IP = import.meta.env.VITE_LAN_IP;
-// Phone must reach the server via LAN IP — localhost won't work on mobile
-const PHONE_SERVER_URL = LAN_IP ? `http://${LAN_IP}:8000` : SERVER_URL;
-// QR code confirm page URL must also use LAN IP so phone can open it
-const CONFIRM_BASE = LAN_IP ? `http://${LAN_IP}:5173` : window.location.origin;
+
+// In production (no LAN_IP set), phone uses the same Render server URL
+// In local dev, phone uses LAN IP so it can reach the laptop's server
+const PHONE_SERVER_URL = LAN_IP
+  ? `http://${LAN_IP}:8000`
+  : SERVER_URL; // e.g. https://chat-995k.onrender.com
+
+// Confirm page base: in production use current origin (Netlify URL)
+// In local dev use LAN IP so phone can open the Vite dev server
+const CONFIRM_BASE = LAN_IP
+  ? `http://${LAN_IP}:5173`
+  : window.location.origin; // e.g. https://chatify-superapp.netlify.app
 
 function Ghost({ size = 100 }) {
   const s = size;
