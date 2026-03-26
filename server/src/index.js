@@ -98,16 +98,15 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected:", MONGO_URI.split("@").pop() || MONGO_URI);
-    httpServer.listen(process.env.PORT || 5000, () =>
-      console.log(`🚀 Server running on http://localhost:${process.env.PORT || 5000}`)
+    httpServer.listen(process.env.PORT || 8000, "0.0.0.0", () =>
+      console.log(`🚀 Server running on port ${process.env.PORT || 8000}`)
     );
   })
   .catch((err) => {
     console.error("❌ MongoDB connection failed:", err.message);
-    console.error(
-      "\n👉 Fix: Update MONGO_URI in server/.env\n" +
-      "   Local:  mongodb://127.0.0.1:27017/chatapp\n" +
-      "   Atlas:  mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/chatapp\n"
+    // Still start the server so Render doesn't kill the process
+    // API calls will fail gracefully with 500 errors
+    httpServer.listen(process.env.PORT || 8000, "0.0.0.0", () =>
+      console.log(`⚠️  Server running WITHOUT database on port ${process.env.PORT || 8000}`)
     );
-    process.exit(1);
   });
