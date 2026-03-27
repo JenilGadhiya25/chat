@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { SERVER_URL } from "../lib/axios";
+import { resolveMediaUrl } from "../lib/mediaUrl";
 import { useAuthStore } from "../store/authStore";
 import api from "../lib/axios";
 import Avatar from "./Avatar";
 
 const resolveUrl = (url) => {
   if (!url) return "";
-  if (url.startsWith("http") || url.startsWith("/presets/")) return url;
-  return `${SERVER_URL}${url}`;
+  return resolveMediaUrl(url);
 };
 
 /**

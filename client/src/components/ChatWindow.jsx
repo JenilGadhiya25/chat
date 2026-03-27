@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
 import { getSocket } from "../lib/socket";
-import { SERVER_URL } from "../lib/axios";
+import { resolveMediaUrl } from "../lib/mediaUrl";
 import MessageBubble from "./MessageBubble";
 import Avatar from "./Avatar";
 import EmojiPicker from "emoji-picker-react";
@@ -32,14 +32,12 @@ const resolveBg = (bg) => {
   if (!bg) return null;
   if (bg.startsWith("color:")) return { type: "css", value: bg.slice(6) };
   if (bg.startsWith("linear-gradient") || bg.startsWith("#")) return { type: "css", value: bg };
-  if (bg.startsWith("http") || bg.startsWith("/presets/")) return { type: "img", value: bg };
-  return { type: "img", value: `${SERVER_URL}${bg}` };
+  return { type: "img", value: resolveMediaUrl(bg) };
 };
 
 const resolveAvatar = (src) => {
   if (!src) return "";
-  if (src.startsWith("http") || src.startsWith("/presets/")) return src;
-  return `${SERVER_URL}${src}`;
+  return resolveMediaUrl(src);
 };
 
 export default function ChatWindow() {

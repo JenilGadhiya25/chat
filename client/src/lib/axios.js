@@ -22,6 +22,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => {
+    try {
+      const base = response?.config?.baseURL || "";
+      if (/^https?:\/\//i.test(base)) {
+        const origin = new URL(base).origin;
+        localStorage.setItem("backend_origin", origin);
+      }
+    } catch {
+      // ignore
+    }
+    return response;
+  },
+  (error) => Promise.reject(error)
+);
+
 export default api;
 
 export { SERVER_URL };

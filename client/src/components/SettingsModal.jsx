@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "../store/authStore";
 import { useChatStore } from "../store/chatStore";
 import { applyTheme, isDarkModeEnabled } from "../lib/theme";
-import { SERVER_URL } from "../lib/axios";
+import { resolveMediaUrl } from "../lib/mediaUrl";
 import api from "../lib/axios";
 import Avatar from "./Avatar";
 
@@ -30,8 +30,7 @@ const SETTINGS_KEYS = {
 
 const resolveUrl = (url) => {
   if (!url) return "";
-  if (url.startsWith("http") || url.startsWith("/presets/")) return url;
-  return `${SERVER_URL}${url}`;
+  return resolveMediaUrl(url);
 };
 
 const readBool = (key, fallback) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SERVER_URL } from "../lib/axios";
+import { resolveMediaUrl } from "../lib/mediaUrl";
 
 const sizes = {
   sm: "w-8 h-8 text-xs",
@@ -24,8 +24,7 @@ function getColor(name = "") {
 const resolveAvatar = (src) => {
   if (!src) return { type: "none" };
   if (src.startsWith("color:")) return { type: "color", value: src.slice(6) };
-  if (src.startsWith("http") || src.startsWith("/presets/")) return { type: "img", value: src };
-  return { type: "img", value: `${SERVER_URL}${src}` };
+  return { type: "img", value: resolveMediaUrl(src) };
 };
 
 export default function Avatar({ src, name = "", size = "md" }) {

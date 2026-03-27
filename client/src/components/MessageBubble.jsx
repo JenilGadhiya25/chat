@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
 import { format } from "date-fns";
-import { SERVER_URL } from "../lib/axios";
+import { resolveMediaUrl } from "../lib/mediaUrl";
 
-const resolveUrl = (url) => url?.startsWith("http") ? url : `${SERVER_URL}${url}`;
+const resolveUrl = (url) => resolveMediaUrl(url);
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 export default function MessageBubble({ message, isOwn }) {

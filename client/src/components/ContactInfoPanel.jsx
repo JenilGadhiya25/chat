@@ -1,14 +1,13 @@
 import { useRef, useState } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useChatStore } from "../store/chatStore";
-import { SERVER_URL } from "../lib/axios";
+import { resolveMediaUrl } from "../lib/mediaUrl";
 import Avatar from "./Avatar";
 import toast from "react-hot-toast";
 
 const resolveUrl = (url) => {
   if (!url) return null;
-  if (url.startsWith("http") || url.startsWith("/presets/")) return url;
-  return `${SERVER_URL}${url}`;
+  return resolveMediaUrl(url);
 };
 
 export default function ContactInfoPanel({ onClose }) {
