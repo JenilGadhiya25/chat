@@ -19,6 +19,9 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const app = express();
 const httpServer = createServer(app);
 
+// Avoid mongoose buffering queries when DB is unavailable (prevents 10s buffering timeout errors)
+mongoose.set("bufferCommands", false);
+
 const configuredClientUrls = [
   process.env.CLIENT_URL,
   process.env.CLIENT_URLS,
@@ -72,6 +75,34 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded media files
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+// Health route (useful for deployment diagnostics)
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    mongoReadyState: mongoose.connection.readyState,
+    mongoConnected: mongoose.connection.readyState === 1,
+  });
+});
+
+app.get("/api/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    mongoReadyState: mongoose.connection.readyState,
+    mongoConnected: mongoose.connection.readyState === 1,
+  });
+});
+
+// Block API calls while MongoDB is not ready
+app.use("/api", (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      message:
+        "Database is not connected in this environment. Check MONGO_URI, MongoDB Atlas IP allowlist, and deployment env vars.",
+    });
+  }
+  return next();
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
@@ -92,11 +123,17 @@ app.use((err, _req, res, _next) => {
 initSocket(io);
 
 // Connect to DB then start server
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/chatapp";
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb://127.0.0.1:27017/chatapp";
 const PORT = process.env.PORT || 8000;
 
 mongoose
-  .connect(MONGO_URI)
+  .connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  })
   .then(() => {
     console.log("✅ MongoDB connected:", MONGO_URI.split("@").pop() || MONGO_URI);
     httpServer.listen(PORT, "0.0.0.0", () =>
