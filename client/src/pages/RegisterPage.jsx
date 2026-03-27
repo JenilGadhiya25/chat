@@ -1,13 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
+import api from "../lib/axios";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const { register } = useAuthStore();
   const navigate = useNavigate();
+
+  // Wake backend on page load to reduce first-submit failures on cold start.
+  useEffect(() => {
+    api.get("/auth/ping").catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +24,11 @@ export default function RegisterPage() {
       toast.success("Account created!");
       navigate("/", { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || "Registration failed");
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Registration failed. Please try again.";
+      toast.error(message, { id: "register-error" });
     } finally {
       setLoading(false);
     }
