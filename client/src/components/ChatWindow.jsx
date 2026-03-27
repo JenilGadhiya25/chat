@@ -94,6 +94,8 @@ export default function ChatWindow({ listenerOnly = false }) {
   const callMetaRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const bottomRef = useRef(null);
   const typingTimeout = useRef(null);
   const fileInputRef = useRef(null);
@@ -152,12 +154,14 @@ export default function ChatWindow({ listenerOnly = false }) {
   }, []);
 
   useEffect(() => {
+    localStreamRef.current = localStream;
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = localStream || null;
     }
   }, [localStream]);
 
   useEffect(() => {
+    remoteStreamRef.current = remoteStream;
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = remoteStream || null;
     }
@@ -179,8 +183,8 @@ export default function ChatWindow({ listenerOnly = false }) {
   const endLocalCallState = useCallback(() => {
     clearTimeout(callTimeoutRef.current);
     clearPeerConnection();
-    stopStream(localStream);
-    stopStream(remoteStream);
+    stopStream(localStreamRef.current);
+    stopStream(remoteStreamRef.current);
     setLocalStream(null);
     setRemoteStream(null);
     setIncomingCall(null);
@@ -188,7 +192,7 @@ export default function ChatWindow({ listenerOnly = false }) {
     setIsMicMuted(false);
     setIsCamOff(false);
     setCallState("idle");
-  }, [clearPeerConnection, localStream, remoteStream]);
+  }, [clearPeerConnection]);
 
   const persistCallLog = useCallback(async (status) => {
     const meta = callMetaRef.current;
@@ -570,7 +574,7 @@ export default function ChatWindow({ listenerOnly = false }) {
     return () => {
       endLocalCallState();
     };
-  }, [endLocalCallState]);
+  }, []);
 
   if (listenerOnly) {
     return (callState !== "idle" || incomingCall) ? (
