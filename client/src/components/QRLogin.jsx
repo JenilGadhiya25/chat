@@ -4,9 +4,10 @@ import { io } from "socket.io-client";
 import { useAuthStore } from "../store/authStore";
 import { connectSocket } from "../lib/socket";
 import { useNavigate } from "react-router-dom";
+import { resolveServerUrl } from "../lib/serverUrl";
 
 // Desktop socket connects to the configured server
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8000";
+const SERVER_URL = resolveServerUrl();
 const LAN_IP = import.meta.env.VITE_LAN_IP;
 
 // In production (no LAN_IP set), phone uses the same Render server URL

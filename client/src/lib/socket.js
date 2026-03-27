@@ -1,11 +1,5 @@
 import { io } from "socket.io-client";
-
-const resolveServerUrl = () => {
-  const envUrl = (import.meta.env.VITE_SERVER_URL || "").trim();
-  if (envUrl) return envUrl.replace(/\/$/, "");
-  if (!import.meta.env.DEV) return "";
-  return "http://localhost:8000";
-};
+import { resolveServerUrl } from "./serverUrl";
 
 const SERVER_URL = resolveServerUrl();
 

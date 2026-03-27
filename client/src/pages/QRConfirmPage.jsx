@@ -5,6 +5,7 @@ import { connectSocket } from "../lib/socket";
 import { io } from "socket.io-client";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { resolveServerUrl } from "../lib/serverUrl";
 
 export default function QRConfirmPage() {
   const [params] = useSearchParams();
@@ -12,7 +13,7 @@ export default function QRConfirmPage() {
   const { user } = useAuthStore();
 
   const qrToken = params.get("token");
-  const server = params.get("server") || import.meta.env.VITE_SERVER_URL || "http://localhost:8000";
+  const server = params.get("server") || resolveServerUrl();
 
   // Axios instance pointing at the correct server (LAN IP on phone)
   const serverApi = axios.create({ baseURL: `${server}/api` });
