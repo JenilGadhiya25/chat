@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-// Map userId -> socketId
+// Map userId -> Set<socketId>
 const onlineUsers = new Map();
 
 // Map qrToken -> { socketId, createdAt }  (for QR login)
@@ -10,7 +10,23 @@ const qrSessions = new Map();
 let _io = null;
 
 export const getIO = () => _io;
-export const getSocketId = (userId) => onlineUsers.get(userId);
+export const getSocketId = (userId) => {
+  const sockets = onlineUsers.get(userId);
+  if (!sockets || sockets.size === 0) return undefined;
+  return [...sockets][0];
+};
+
+export const getSocketIds = (userId) => {
+  const sockets = onlineUsers.get(userId);
+  return sockets ? [...sockets] : [];
+};
+
+export const emitToUser = (io, userId, event, payload) => {
+  const targets = getSocketIds(userId);
+  if (!targets.length) return false;
+  targets.forEach((sid) => io.to(sid).emit(event, payload));
+  return true;
+};
 
 export const initSocket = (io) => {
   _io = io;
@@ -19,7 +35,9 @@ export const initSocket = (io) => {
     const userId = socket.handshake.query.userId;
 
     if (userId && userId !== "undefined") {
-      onlineUsers.set(userId, socket.id);
+      const existing = onlineUsers.get(userId) || new Set();
+      existing.add(socket.id);
+      onlineUsers.set(userId, existing);
       User.findByIdAndUpdate(userId, { isOnline: true }).exec();
       io.emit("onlineUsers", Array.from(onlineUsers.keys()));
     }
@@ -86,37 +104,40 @@ export const initSocket = (io) => {
 
     // WebRTC call signaling
     socket.on("call:offer", ({ toUserId, payload }) => {
-      const targetSocket = onlineUsers.get(toUserId);
-      if (targetSocket) {
-        io.to(targetSocket).emit("call:offer", { fromUserId: userId, ...payload });
+      const delivered = emitToUser(io, toUserId, "call:offer", { fromUserId: userId, ...payload });
+      if (!delivered && userId && userId !== "undefined") {
+        emitToUser(io, userId, "call:end", {
+          fromUserId: toUserId,
+          reason: "unavailable",
+          conversationId: payload?.conversationId,
+        });
       }
     });
 
     socket.on("call:answer", ({ toUserId, payload }) => {
-      const targetSocket = onlineUsers.get(toUserId);
-      if (targetSocket) {
-        io.to(targetSocket).emit("call:answer", { fromUserId: userId, ...payload });
-      }
+      emitToUser(io, toUserId, "call:answer", { fromUserId: userId, ...payload });
     });
 
     socket.on("call:ice", ({ toUserId, payload }) => {
-      const targetSocket = onlineUsers.get(toUserId);
-      if (targetSocket) {
-        io.to(targetSocket).emit("call:ice", { fromUserId: userId, ...payload });
-      }
+      emitToUser(io, toUserId, "call:ice", { fromUserId: userId, ...payload });
     });
 
     socket.on("call:end", ({ toUserId, payload }) => {
-      const targetSocket = onlineUsers.get(toUserId);
-      if (targetSocket) {
-        io.to(targetSocket).emit("call:end", { fromUserId: userId, ...payload });
-      }
+      emitToUser(io, toUserId, "call:end", { fromUserId: userId, ...payload });
     });
 
     socket.on("disconnect", () => {
       if (userId && userId !== "undefined") {
-        onlineUsers.delete(userId);
-        User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() }).exec();
+        const sockets = onlineUsers.get(userId);
+        if (sockets) {
+          sockets.delete(socket.id);
+          if (sockets.size === 0) {
+            onlineUsers.delete(userId);
+            User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() }).exec();
+          } else {
+            onlineUsers.set(userId, sockets);
+          }
+        }
         io.emit("onlineUsers", Array.from(onlineUsers.keys()));
       }
     });

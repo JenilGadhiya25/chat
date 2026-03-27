@@ -10,9 +10,23 @@ import ContactInfoPanel from "./ContactInfoPanel";
 import { isDarkModeEnabled, subscribeTheme } from "../lib/theme";
 import toast from "react-hot-toast";
 
-const ICE_SERVERS = {
-  iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }],
+const DEFAULT_ICE = [
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+];
+
+const parseIceServers = () => {
+  const raw = import.meta.env.VITE_ICE_SERVERS_JSON;
+  if (!raw) return DEFAULT_ICE;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_ICE;
+  } catch {
+    return DEFAULT_ICE;
+  }
 };
+
+const ICE_SERVERS = { iceServers: parseIceServers() };
+const CALL_RING_TIMEOUT_MS = Number(import.meta.env.VITE_CALL_RING_TIMEOUT_MS || 30000);
 
 const resolveBg = (bg) => {
   if (!bg) return null;
@@ -60,6 +74,7 @@ export default function ChatWindow() {
   const bottomRef = useRef(null);
   const typingTimeout = useRef(null);
   const fileInputRef = useRef(null);
+  const callTimeoutRef = useRef(null);
 
   const chatBg = resolveBg(user?.chatBackground);
   const otherParticipant = activeConversation?.isGroup
@@ -139,6 +154,7 @@ export default function ChatWindow() {
   };
 
   const endLocalCallState = useCallback(() => {
+    clearTimeout(callTimeoutRef.current);
     clearPeerConnection();
     stopStream(localStream);
     stopStream(remoteStream);
@@ -193,9 +209,18 @@ export default function ChatWindow() {
       if (stream) setRemoteStream(stream);
     };
 
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === "failed" || state === "disconnected") {
+        toast.error("Call connection lost");
+        persistCallLog("cancelled");
+        endLocalCallState();
+      }
+    };
+
     pcRef.current = pc;
     return pc;
-  }, [activeConversation?._id]);
+  }, [activeConversation?._id, endLocalCallState, persistCallLog]);
 
   const emitTyping = useCallback(() => {
     if (!activeConversation?._id) return;
@@ -290,6 +315,17 @@ export default function ChatWindow() {
           fromAvatar: user?.avatar,
         },
       });
+
+      clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = setTimeout(() => {
+        toast.error("No answer");
+        socket?.emit("call:end", {
+          toUserId: otherParticipant._id,
+          payload: { reason: "missed", conversationId: activeConversation?._id },
+        });
+        persistCallLog("missed");
+        endLocalCallState();
+      }, CALL_RING_TIMEOUT_MS);
     } catch {
       toast.error("Could not start call. Please allow microphone/camera access.");
       endLocalCallState();
@@ -331,6 +367,7 @@ export default function ChatWindow() {
         },
       });
 
+      clearTimeout(callTimeoutRef.current);
       setIncomingCall(null);
       setCallState("in-call");
     } catch {
@@ -348,6 +385,7 @@ export default function ChatWindow() {
     });
     setIncomingCall(null);
     setCallState("idle");
+    persistCallLog("declined");
   };
 
   const hangupCall = () => {
@@ -403,12 +441,22 @@ export default function ChatWindow() {
       });
       setCallType(payload.callType || "audio");
       setCallState("ringing");
+      clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = setTimeout(() => {
+        socket.emit("call:end", {
+          toUserId: payload.fromUserId,
+          payload: { reason: "missed", conversationId: payload.conversationId },
+        });
+        setIncomingCall(null);
+        setCallState("idle");
+      }, CALL_RING_TIMEOUT_MS);
     };
 
     const onAnswer = async (payload) => {
       if (!pcRef.current) return;
       try {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        clearTimeout(callTimeoutRef.current);
         setCallState("in-call");
       } catch {
         toast.error("Call connection failed");
@@ -428,11 +476,14 @@ export default function ChatWindow() {
     const onEnd = (payload) => {
       if (payload?.reason === "busy") toast.error("User is busy on another call");
       if (payload?.reason === "declined") toast.error("Call was declined");
+      if (payload?.reason === "unavailable") toast.error("User is offline or unavailable");
+      if (payload?.reason === "missed") toast.error("Call missed");
       if (payload?.reason !== "busy" && payload?.reason !== "declined") {
         toast("Call ended");
       }
-      if (payload?.reason === "busy") persistCallLog("missed");
-      else if (payload?.reason === "declined") persistCallLog("declined");
+      if (payload?.reason === "busy" || payload?.reason === "missed" || payload?.reason === "unavailable") {
+        persistCallLog("missed");
+      } else if (payload?.reason === "declined") persistCallLog("declined");
       else persistCallLog(callState === "in-call" ? "completed" : "cancelled");
       endLocalCallState();
     };

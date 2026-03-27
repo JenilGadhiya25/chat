@@ -5,7 +5,7 @@ import User from "../models/User.js";
 import CallLog from "../models/CallLog.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../utils/upload.js";
-import { getIO, getSocketId } from "../socket/socket.js";
+import { getIO, emitToUser } from "../socket/socket.js";
 
 const router = express.Router();
 
@@ -230,8 +230,7 @@ router.post("/:conversationId", protect, upload.single("media"), async (req, res
       const conversation = await Conversation.findById(req.params.conversationId);
       conversation.participants.forEach((participantId) => {
         if (participantId.toString() === req.user._id.toString()) return;
-        const socketId = getSocketId(participantId.toString());
-        if (socketId) io.to(socketId).emit("newMessage", message);
+        emitToUser(io, participantId.toString(), "newMessage", message);
       });
     }
 
@@ -280,8 +279,7 @@ router.put("/:messageId", protect, async (req, res) => {
       const conversation = await Conversation.findById(message.conversationId);
       conversation.participants.forEach((participantId) => {
         if (participantId.toString() === req.user._id.toString()) return;
-        const socketId = getSocketId(participantId.toString());
-        if (socketId) io.to(socketId).emit("messageEdited", message);
+        emitToUser(io, participantId.toString(), "messageEdited", message);
       });
     }
 
@@ -321,8 +319,7 @@ router.post("/:messageId/reaction", protect, async (req, res) => {
     const io = getIO();
     if (io) {
       conversation.participants.forEach((participantId) => {
-        const socketId = getSocketId(participantId.toString());
-        if (socketId) io.to(socketId).emit("messageReaction", message);
+        emitToUser(io, participantId.toString(), "messageReaction", message);
       });
     }
 
