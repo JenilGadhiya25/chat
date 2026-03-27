@@ -39,11 +39,11 @@ export default function NoChatSelected({ onOpenAi = () => {} }) {
   };
 
   return (
-    <div className="flex-1 bg-[#0b0f13] flex items-center justify-center p-6 sm:p-10">
+    <div className="flex-1 bg-[#0b0f13] flex items-center justify-center p-3 sm:p-6 md:p-10">
       <div className="w-full max-w-[470px]">
-        <div className="mx-auto max-w-[390px] rounded-[24px] bg-[#181d22] px-6 py-7 text-center border border-white/5 shadow-[0_16px_36px_rgba(0,0,0,0.4)]">
-          <div className="w-[122px] h-[86px] mx-auto mb-6 rounded-xl bg-[#1f252b] flex items-center justify-center">
-            <svg className="w-[102px] h-[72px]" viewBox="0 0 170 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="mx-auto max-w-[390px] rounded-[24px] bg-[#181d22] px-4 sm:px-6 py-5 sm:py-7 text-center border border-white/5 shadow-[0_16px_36px_rgba(0,0,0,0.4)]">
+          <div className="w-[102px] h-[74px] sm:w-[122px] sm:h-[86px] mx-auto mb-5 sm:mb-6 rounded-xl bg-[#1f252b] flex items-center justify-center">
+            <svg className="w-[86px] h-[62px] sm:w-[102px] sm:h-[72px]" viewBox="0 0 170 120" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="26" y="24" width="112" height="68" rx="8" fill="#DCD7CC" />
               <rect x="26" y="24" width="56" height="68" rx="8" fill="#2ED66B" />
               <path d="M57 38h16M45 24h80" stroke="#0E161D" strokeWidth="4" strokeLinecap="round" />
@@ -53,20 +53,20 @@ export default function NoChatSelected({ onOpenAi = () => {} }) {
             </svg>
           </div>
 
-          <h2 className="text-[41px] leading-[1.06] font-semibold text-white mb-3">{platform.title}</h2>
-          <p className="text-[23px] leading-[1.3] text-[#9ea4ab] max-w-[320px] mx-auto mb-6">
+          <h2 className="text-[27px] sm:text-[34px] md:text-[41px] leading-[1.08] font-semibold text-white mb-3">{platform.title}</h2>
+          <p className="text-[16px] sm:text-[20px] md:text-[23px] leading-[1.3] text-[#9ea4ab] max-w-[320px] mx-auto mb-6">
             {platform.subtitle}
           </p>
 
           <button
             onClick={handleStoreClick}
-            className="h-[50px] px-8 rounded-full bg-[#0e6a46] hover:bg-[#0f7b52] text-[#d4f5dc] text-[25px] font-semibold transition"
+            className="h-[44px] sm:h-[50px] px-5 sm:px-8 rounded-full bg-[#0e6a46] hover:bg-[#0f7b52] text-[#d4f5dc] text-[17px] sm:text-[22px] md:text-[25px] font-semibold transition"
           >
             {platform.cta}
           </button>
         </div>
 
-        <div className="mt-8 grid grid-cols-3 gap-4">
+        <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4">
           {[
             { label: "Send document", icon: "doc" },
             { label: "Add contact", icon: "user" },
@@ -77,7 +77,7 @@ export default function NoChatSelected({ onOpenAi = () => {} }) {
               className="group text-center"
               onClick={item.label === "Ask Meta AI" ? onOpenAi : undefined}
             >
-              <div className="h-[108px] rounded-[18px] bg-[#2b2f34] border border-white/5 flex items-center justify-center group-hover:bg-[#333940] transition">
+              <div className="h-[82px] sm:h-[108px] rounded-[14px] sm:rounded-[18px] bg-[#2b2f34] border border-white/5 flex items-center justify-center group-hover:bg-[#333940] transition">
                 {item.icon === "doc" && (
                   <svg className="w-8 h-8 text-[#c2c6cc]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -96,7 +96,7 @@ export default function NoChatSelected({ onOpenAi = () => {} }) {
                   <div className="w-9 h-9 rounded-full border-[5px] border-[#2775ff] border-t-[#8a4bff] border-r-[#32d1ff]" />
                 )}
               </div>
-              <p className="mt-3 text-[20px] text-[#aeb3b9]">{item.label}</p>
+              <p className="mt-2 sm:mt-3 text-[14px] sm:text-[18px] md:text-[20px] text-[#aeb3b9]">{item.label}</p>
             </button>
           ))}
         </div>

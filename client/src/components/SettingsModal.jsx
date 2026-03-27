@@ -68,12 +68,12 @@ function Toggle({ value, onChange }) {
 
 function SettingRow({ title, desc, right }) {
   return (
-    <div className="flex items-center justify-between py-3 gap-4 border-b border-gray-100 dark:border-[#2a3942] last:border-b-0">
-      <div>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-3 border-b border-gray-100 dark:border-[#2a3942] last:border-b-0">
+      <div className="min-w-0">
         <p className="text-[15px] font-medium text-[#111b21] dark:text-[#e9edef]">{title}</p>
         {desc ? <p className="text-sm text-gray-500">{desc}</p> : null}
       </div>
-      <div>{right}</div>
+      <div className="w-full sm:w-auto">{right}</div>
     </div>
   );
 }
@@ -230,14 +230,14 @@ export default function SettingsModal({ open, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center">
-      <div className="w-full max-w-[1280px] h-[90vh] bg-[#f6f7f8] dark:bg-[#111b21] rounded-2xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.35)] grid grid-cols-2">
-        <aside className="h-full bg-[#eceff2] dark:bg-[#1f2c33] border-r border-gray-200 dark:border-[#2a3942] p-5 overflow-y-auto min-w-0">
+    <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-sm p-2 sm:p-4 md:p-6 flex items-center justify-center">
+      <div className="w-full max-w-[1280px] h-[96dvh] sm:h-[92dvh] bg-[#f6f7f8] dark:bg-[#111b21] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.35)] grid grid-cols-1 lg:grid-cols-2">
+        <aside className="h-full bg-[#eceff2] dark:bg-[#1f2c33] border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-[#2a3942] p-4 sm:p-5 overflow-y-auto min-w-0">
           <div className="flex items-center gap-2 mb-6">
             <svg className="w-8 h-8 text-[#25d366]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M20.52 3.48A11.8 11.8 0 0012.05 0C5.58 0 .33 5.24.33 11.72c0 2.07.54 4.08 1.58 5.84L0 24l6.6-1.73a11.7 11.7 0 005.45 1.39h.01c6.47 0 11.72-5.25 11.72-11.73a11.62 11.62 0 00-3.26-8.45z" />
             </svg>
-            <span className="text-[28px] font-semibold text-[#25d366] leading-none">WhatsApp</span>
+            <span className="text-[24px] sm:text-[28px] font-semibold text-[#25d366] leading-none">WhatsApp</span>
           </div>
 
           <div className="space-y-1.5">
@@ -251,7 +251,7 @@ export default function SettingsModal({ open, onClose }) {
                     : "hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
               >
-                <p className="text-[16px] font-semibold text-[#111b21] dark:text-[#e9edef] leading-tight">{n.title}</p>
+                <p className="text-[15px] sm:text-[16px] font-semibold text-[#111b21] dark:text-[#e9edef] leading-tight">{n.title}</p>
                 <p className="text-[12px] text-gray-500 mt-0.5">{n.sub}</p>
               </button>
             ))}
@@ -259,12 +259,12 @@ export default function SettingsModal({ open, onClose }) {
         </aside>
 
         <main className="h-full min-w-0 overflow-y-auto bg-[#f9fafb] dark:bg-[#0b141a]">
-          <div className="sticky top-0 z-10 px-8 py-5 border-b border-gray-200 dark:border-[#2a3942] bg-white/95 dark:bg-[#132028]/95 backdrop-blur">
+          <div className="sticky top-0 z-10 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-gray-200 dark:border-[#2a3942] bg-white/95 dark:bg-[#132028]/95 backdrop-blur">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar src={user?.avatar} name={user?.username || "User"} size="xl" />
                 <div className="min-w-0">
-                  <p className="text-[24px] font-semibold text-[#111b21] dark:text-[#e9edef] truncate">{user?.username || "User"}</p>
+                  <p className="text-[20px] sm:text-[24px] font-semibold text-[#111b21] dark:text-[#e9edef] truncate">{user?.username || "User"}</p>
                   <p className="text-[13px] text-gray-500 truncate">{user?.bio || "Available"}</p>
                 </div>
               </div>
@@ -277,11 +277,11 @@ export default function SettingsModal({ open, onClose }) {
             </div>
           </div>
 
-          <div className="px-8 py-6">
-            <div className="max-w-[860px] bg-white dark:bg-[#1f2c33] rounded-2xl border border-gray-200 dark:border-[#2a3942] p-6">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div className="max-w-[860px] bg-white dark:bg-[#1f2c33] rounded-xl sm:rounded-2xl border border-gray-200 dark:border-[#2a3942] p-4 sm:p-6">
               {section === "account" && (
                 <div>
-                  <h2 className="text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Account</h2>
+                  <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Account</h2>
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="relative">
                       <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#00a884]">
@@ -323,7 +323,7 @@ export default function SettingsModal({ open, onClose }) {
 
               {section === "chats" && (
                 <div>
-                  <h2 className="text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Chat</h2>
+                  <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Chat</h2>
                   <SettingRow title="Theme" desc="Display" right={<Toggle value={darkMode} onChange={(v) => { setDarkMode(v); applyTheme(v); }} />} />
                   <div className="py-3 border-b border-gray-100 dark:border-[#2a3942]">
                     <div className="flex items-center justify-between mb-2">
@@ -361,14 +361,14 @@ export default function SettingsModal({ open, onClose }) {
                   </div>
                   <SettingRow title="Enter is send" desc="Enter key will send your message" right={<Toggle value={enterSend} onChange={setEnterSend} />} />
                   <SettingRow title="Font Size" right={
-                    <select value={fontSize} onChange={(e) => { setFontSize(e.target.value); applyFontSize(e.target.value); }} className="h-9 w-40 rounded-lg px-3 border bg-transparent text-sm">
+                    <select value={fontSize} onChange={(e) => { setFontSize(e.target.value); applyFontSize(e.target.value); }} className="h-9 w-full sm:w-40 rounded-lg px-3 border bg-transparent text-sm">
                       <option value="small">Small</option>
                       <option value="medium">Medium</option>
                       <option value="large">Large</option>
                     </select>
                   } />
                   <SettingRow title="Language" right={
-                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="h-9 w-40 rounded-lg px-3 border bg-transparent text-sm">
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="h-9 w-full sm:w-40 rounded-lg px-3 border bg-transparent text-sm">
                       <option>English (US)</option>
                       <option>English (UK)</option>
                       <option>Hindi</option>
@@ -382,7 +382,7 @@ export default function SettingsModal({ open, onClose }) {
 
               {section === "notifications" && (
                 <div>
-                  <h2 className="text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Notifications</h2>
+                  <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Notifications</h2>
                   <SettingRow title="Message Notifications" desc="Message alerts" right={<Toggle value={notifMsg} onChange={async (v) => {
                     setNotifMsg(v);
                     if (v && typeof Notification !== "undefined") {
@@ -396,7 +396,7 @@ export default function SettingsModal({ open, onClose }) {
 
               {section === "storage" && (
                 <div>
-                  <h2 className="text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Storage & Data</h2>
+                  <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Storage & Data</h2>
                   <SettingRow title="Local App Storage" right={<span className="text-gray-500 text-sm">{storageKb} KB</span>} />
                   <SettingRow title="Conversations" right={<span className="text-gray-500 text-sm">{conversations.length}</span>} />
                   <button onClick={() => {
@@ -410,7 +410,7 @@ export default function SettingsModal({ open, onClose }) {
 
               {section === "help" && (
                 <div>
-                  <h2 className="text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Help</h2>
+                  <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#111b21] dark:text-[#e9edef] mb-5">Help</h2>
                   <div className="space-y-2 text-sm">
                     <a className="block text-[#00a884] underline" href="https://faq.whatsapp.com/" target="_blank" rel="noreferrer">Help Centre</a>
                     <a className="block text-[#00a884] underline" href="https://www.whatsapp.com/contact/" target="_blank" rel="noreferrer">Contact Us</a>

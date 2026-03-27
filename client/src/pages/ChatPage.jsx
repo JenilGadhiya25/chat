@@ -130,10 +130,10 @@ export default function ChatPage() {
   const shouldMountBackgroundCallListener = !isPrimaryChatWindowMounted;
 
   return (
-    <div className="h-screen w-screen bg-[#111b21]">
+    <div className="h-[100dvh] w-full bg-[#111b21]">
       <div className="flex h-full overflow-hidden bg-[#eceef1] dark:bg-[#111b21]">
         {/* Sidebar — always visible on desktop */}
-        <div className={`${activeConversation && mainTab === "chats" ? "hidden sm:flex" : "flex"} w-full sm:w-[430px] flex-shrink-0 h-full`}>
+        <div className={`${activeConversation && mainTab === "chats" ? "hidden sm:flex" : "flex"} w-full sm:w-[430px] lg:w-[460px] flex-shrink-0 h-full min-w-0`}>
           <Sidebar
             mainTab={mainTab}
             aiOpen={showAiChat}

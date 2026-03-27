@@ -876,14 +876,14 @@ function CallOverlay({
 
         {!showRemoteVideo && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <div className="w-28 h-28 rounded-full overflow-hidden bg-[#b8bfd1] mb-4 flex items-center justify-center">
+            <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-[#b8bfd1] mb-4 flex items-center justify-center">
               {avatar ? (
                 <img src={avatar} alt="" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-4xl text-white font-semibold">{name?.[0]?.toUpperCase()}</span>
               )}
             </div>
-            <p className="text-[#d9dbe3] text-[44px] font-medium leading-none">{name}</p>
+            <p className="text-[#d9dbe3] text-[30px] sm:text-[44px] font-medium leading-none px-4 text-center break-words">{name}</p>
             <p className="text-[#8f95a6] mt-2 text-base">
               {showIncoming
                 ? `Incoming ${isVideo ? "video" : "voice"} call`
@@ -895,7 +895,7 @@ function CallOverlay({
         )}
 
         {showLocalVideo && (
-          <div className="absolute top-6 left-6 w-56 h-36 rounded-2xl overflow-hidden border border-white/20 bg-black/30">
+          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 w-32 h-24 sm:w-56 sm:h-36 rounded-xl sm:rounded-2xl overflow-hidden border border-white/20 bg-black/30">
             <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
           </div>
         )}
@@ -903,7 +903,7 @@ function CallOverlay({
         {!showIncoming && (
           <button
             onClick={onHangup}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-[#e3e8f3] text-[#61697f] flex items-center justify-center hover:bg-white"
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#e3e8f3] text-[#61697f] flex items-center justify-center hover:bg-white"
             title="Close call"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -914,12 +914,12 @@ function CallOverlay({
 
         {!showIncoming && (
           <>
-            <button className="absolute left-8 bottom-8 w-12 h-12 rounded-full bg-[#e3e8f3] text-[#61697f] flex items-center justify-center">
+            <button className="absolute left-4 bottom-6 sm:left-8 sm:bottom-8 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#e3e8f3] text-[#61697f] flex items-center justify-center">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 22a10 10 0 100-20 10 10 0 000 20z" />
               </svg>
             </button>
-            <button className="absolute right-8 bottom-8 w-12 h-12 rounded-full bg-[#e3e8f3] text-[#61697f] flex items-center justify-center">
+            <button className="absolute right-4 bottom-6 sm:right-8 sm:bottom-8 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#e3e8f3] text-[#61697f] flex items-center justify-center">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -928,20 +928,20 @@ function CallOverlay({
         )}
 
         {showIncoming ? (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4">
-            <button onClick={onDecline} className="px-7 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-medium">
+          <div className="absolute bottom-8 sm:bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-4 px-4 w-full max-w-md justify-center">
+            <button onClick={onDecline} className="px-5 sm:px-7 py-2.5 sm:py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-medium">
               Decline
             </button>
-            <button onClick={onAccept} className="px-7 py-3 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white font-medium">
+            <button onClick={onAccept} className="px-5 sm:px-7 py-2.5 sm:py-3 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white font-medium">
               Accept
             </button>
           </div>
         ) : (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4">
+          <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-4 px-4">
             {isVideo && (
               <button
                 onClick={onToggleCamera}
-                className={`w-14 h-14 rounded-full flex items-center justify-center ${isCamOff ? "bg-[#2b3142] text-white" : "bg-[#f3f5fa] text-[#61697f]"}`}
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${isCamOff ? "bg-[#2b3142] text-white" : "bg-[#f3f5fa] text-[#61697f]"}`}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-9 5h8a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -950,13 +950,13 @@ function CallOverlay({
             )}
             <button
               onClick={onToggleMute}
-              className={`w-14 h-14 rounded-full flex items-center justify-center ${isMicMuted ? "bg-[#2b3142] text-white" : "bg-[#f3f5fa] text-[#61697f]"}`}
+              className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${isMicMuted ? "bg-[#2b3142] text-white" : "bg-[#f3f5fa] text-[#61697f]"}`}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1v11m0 0a3 3 0 003-3V6a3 3 0 10-6 0v3a3 3 0 003 3zm0 0v4m-4 0h8M5 10v1a7 7 0 0014 0v-1" />
               </svg>
             </button>
-            <button onClick={onHangup} className="w-16 h-16 rounded-full bg-[#e53935] hover:bg-[#d32f2f] text-white flex items-center justify-center">
+            <button onClick={onHangup} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#e53935] hover:bg-[#d32f2f] text-white flex items-center justify-center">
               <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M21 15.46l-5.27-.61a1 1 0 00-.93.28l-2.29 2.29a15.09 15.09 0 01-6.12-6.12l2.29-2.29a1 1 0 00.28-.93L8.54 3a1 1 0 00-.99-.84H3a1 1 0 00-1 1C2 13.94 10.06 22 20.84 22a1 1 0 001-1v-4.55a1 1 0 00-.84-.99z" />
               </svg>

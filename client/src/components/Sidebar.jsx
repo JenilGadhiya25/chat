@@ -112,7 +112,7 @@ export default function Sidebar({
 
   return (
     <aside className={`w-full sm:w-[390px] lg:w-[430px] flex ${panelBg} flex-shrink-0 h-full overflow-hidden`}>
-      <div className={`w-[74px] ${railBg} border-r ${railBorder} flex flex-col items-center py-3`}>
+      <div className={`w-[64px] sm:w-[74px] ${railBg} border-r ${railBorder} flex flex-col items-center py-2 sm:py-3`}>
         <button
           onClick={() => onTabChange("chats")}
           className={`w-12 h-12 rounded-2xl flex items-center justify-center transition ${mainTab === "chats" ? railActive : railIdle}`}
@@ -164,7 +164,7 @@ export default function Sidebar({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className={`flex items-center justify-between px-4 py-3 ${mutedBg} border-b ${borderColor}`}>
-          <h1 className={`${textPrimary} font-semibold text-[28px] leading-none`}>
+          <h1 className={`${textPrimary} font-semibold text-[24px] sm:text-[28px] leading-none`}>
             {titleByTab[mainTab] || "Chats"}
           </h1>
           <div className="flex items-center gap-1 relative">
@@ -203,7 +203,7 @@ export default function Sidebar({
         </div>
 
         {/* Search */}
-        <div className={`px-3 py-2 ${panelBg}`}>
+        <div className={`px-2 sm:px-3 py-2 ${panelBg}`}>
           <div className={`flex items-center gap-2 ${mutedBg} rounded-xl px-3 py-2 border ${borderColor}`}>
             <svg className={`w-4 h-4 ${textMuted} flex-shrink-0`} fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
@@ -220,10 +220,10 @@ export default function Sidebar({
 
         {/* Filter pills */}
         {mainTab === "chats" && (
-          <div className="flex gap-2 px-3 pb-2">
+          <div className="flex gap-2 px-2 sm:px-3 pb-2 overflow-x-auto">
             {["all", "unread", "groups"].map((f) => (
               <button key={f} onClick={() => setFilterTab(f)}
-                className={"px-3 py-1 rounded-full text-xs font-medium transition " + (filterTab === f ? "bg-[#00a884] text-white" : `${mutedBg} ${textMuted} ${darkMode ? "hover:bg-[#2a3942]" : "hover:bg-gray-100"} border ${borderColor}`)}>
+                className={"px-3 py-1 rounded-full whitespace-nowrap text-xs font-medium transition " + (filterTab === f ? "bg-[#00a884] text-white" : `${mutedBg} ${textMuted} ${darkMode ? "hover:bg-[#2a3942]" : "hover:bg-gray-100"} border ${borderColor}`)}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}

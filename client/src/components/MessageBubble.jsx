@@ -40,7 +40,7 @@ export default function MessageBubble({ message, isOwn }) {
   return (
     <div className={`flex msg-enter ${isOwn ? "justify-end" : "justify-start"}`}>
       <div
-        className={`relative max-w-[75vw] sm:max-w-sm md:max-w-md group ${isOwn ? "items-end" : "items-start"} flex flex-col`}
+        className={`relative max-w-[88vw] sm:max-w-sm md:max-w-md group ${isOwn ? "items-end" : "items-start"} flex flex-col`}
         onMouseLeave={() => { setShowMenu(false); setShowReactions(false); }}
       >
         {showReactions && (

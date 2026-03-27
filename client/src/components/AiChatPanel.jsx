@@ -139,7 +139,7 @@ export default function AiChatPanel({ onClose }) {
 
   return (
     <div className="flex-1 flex flex-col bg-[#0b141a]">
-      <div className="h-[60px] px-4 border-b border-[#213039] bg-[#202c33] flex items-center justify-between">
+      <div className="h-[56px] sm:h-[60px] px-3 sm:px-4 border-b border-[#213039] bg-[#202c33] flex items-center justify-between">
         <div>
           <p className="text-[#e9edef] font-semibold">Meta AI</p>
           <p className="text-[11px] text-[#8696a0]">Ask questions or generate images</p>
@@ -147,7 +147,7 @@ export default function AiChatPanel({ onClose }) {
         <button onClick={onClose} className="text-[#aebac1] hover:text-white text-sm">Close</button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
         {!aiReady && (
           <div className="rounded-xl bg-[#2a3942] border border-[#3c4f5a] text-[#d1d7db] text-sm px-3 py-2">
             {configMessage}
@@ -156,7 +156,7 @@ export default function AiChatPanel({ onClose }) {
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${
+              className={`max-w-[90%] sm:max-w-[78%] rounded-2xl px-3 py-2 text-sm ${
                 m.role === "user"
                   ? "bg-[#005c4b] text-[#e9edef]"
                   : "bg-[#202c33] text-[#d1d7db]"
@@ -182,7 +182,7 @@ export default function AiChatPanel({ onClose }) {
         <div ref={endRef} />
       </div>
 
-      <div className="p-3 border-t border-[#213039] bg-[#1f2c33]">
+      <div className="p-2.5 sm:p-3 border-t border-[#213039] bg-[#1f2c33]">
         <div className="flex items-center gap-2">
           <input
             value={text}
@@ -199,7 +199,7 @@ export default function AiChatPanel({ onClose }) {
           <button
             onClick={generateImage}
             disabled={!text.trim() || loading || imgLoading || !aiReady || checkingConfig}
-            className="h-11 px-3 rounded-xl bg-[#374248] text-[#d1d7db] hover:bg-[#415058] disabled:opacity-50"
+            className="h-11 px-3 rounded-xl bg-[#374248] text-[#d1d7db] hover:bg-[#415058] disabled:opacity-50 whitespace-nowrap"
             title="Generate image"
           >
             Image

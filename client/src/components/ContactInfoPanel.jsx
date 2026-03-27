@@ -148,7 +148,7 @@ export default function ContactInfoPanel({ onClose }) {
   };
 
   return (
-    <div className="w-[340px] flex-shrink-0 h-full flex flex-col bg-[#f0f2f5] dark:bg-[#111b21] border-l border-gray-200 dark:border-[#2a3942] overflow-y-auto">
+    <div className="fixed sm:static inset-y-0 right-0 z-[160] w-full sm:w-[340px] max-w-[92vw] sm:max-w-none flex-shrink-0 h-full flex flex-col bg-[#f0f2f5] dark:bg-[#111b21] border-l border-gray-200 dark:border-[#2a3942] overflow-y-auto shadow-2xl sm:shadow-none">
 
       {/* Header */}
       <div className="flex items-center gap-4 px-4 py-4 bg-[#00a884] text-white flex-shrink-0">
@@ -241,7 +241,7 @@ export default function ContactInfoPanel({ onClose }) {
                     <span className="w-2 h-2 rounded-full bg-[#00a884] flex-shrink-0" />
                   )}
                   {isGroup && isCurrentUserGroupAdmin && !isSelf && (
-                    <div className="flex items-center gap-2 ml-2">
+                    <div className="flex flex-wrap items-center gap-2 ml-2 justify-end">
                       <button
                         onClick={() => handleToggleAdmin(p)}
                         disabled={memberBusyId === participantId}
