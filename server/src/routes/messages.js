@@ -6,6 +6,7 @@ import CallLog from "../models/CallLog.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../utils/upload.js";
 import { getIO, emitToUser } from "../socket/socket.js";
+import { storeMediaFile } from "../utils/mediaStore.js";
 
 const router = express.Router();
 
@@ -85,7 +86,7 @@ router.post("/conversations", protect, upload.single("groupAvatar"), async (req,
         admins: [req.user._id],
         admin: req.user._id,
       };
-      if (req.file) convData.groupAvatar = `/uploads/${req.file.filename}`;
+      if (req.file) convData.groupAvatar = await storeMediaFile(req.file, { folder: "chatapp/groups" });
       const conv = await Conversation.create(convData);
       await populateConversation(conv);
       return res.status(201).json(conv);
@@ -154,7 +155,7 @@ router.put("/conversations/:id/group-profile", protect, upload.single("groupAvat
     const groupDescription = req.body.groupDescription?.trim();
     if (groupName) updates.groupName = groupName;
     if (groupDescription !== undefined) updates.groupDescription = groupDescription;
-    if (req.file) updates.groupAvatar = `/uploads/${req.file.filename}`;
+    if (req.file) updates.groupAvatar = await storeMediaFile(req.file, { folder: "chatapp/groups" });
 
     let updated = await Conversation.findByIdAndUpdate(conv._id, updates, { new: true });
     updated = updated ? await populateConversation(updated) : null;
@@ -203,7 +204,7 @@ router.post("/:conversationId", protect, upload.single("media"), async (req, res
     const mediaData =
       mediaFile
         ? {
-            url: `/uploads/${mediaFile.filename}`,
+            url: await storeMediaFile(mediaFile, { folder: "chatapp/messages" }),
             type: mediaFile.mimetype.split("/")[0],
             name: mediaFile.originalname,
           }

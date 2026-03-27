@@ -2,6 +2,7 @@ import express from "express";
 import User from "../models/User.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../utils/upload.js";
+import { storeMediaFile } from "../utils/mediaStore.js";
 
 const router = express.Router();
 
@@ -69,7 +70,7 @@ router.put(
         if (!avatarFile.mimetype.startsWith("image/")) {
           return res.status(400).json({ message: "Avatar must be an image" });
         }
-        updates.avatar = `/uploads/${avatarFile.filename}`;
+        updates.avatar = await storeMediaFile(avatarFile, { folder: "chatapp/avatars" });
       } else if (avatarPreset) {
         if (!avatarPreset.startsWith("/presets/avatars/")) {
           return res.status(400).json({ message: "Invalid avatar preset" });
@@ -85,7 +86,7 @@ router.put(
         if (!backgroundFile.mimetype.startsWith("image/")) {
           return res.status(400).json({ message: "Background must be an image" });
         }
-        updates.chatBackground = `/uploads/${backgroundFile.filename}`;
+        updates.chatBackground = await storeMediaFile(backgroundFile, { folder: "chatapp/backgrounds" });
       } else if (backgroundPreset) {
         if (!backgroundPreset.startsWith("/presets/backgrounds/")) {
           return res.status(400).json({ message: "Invalid background preset" });

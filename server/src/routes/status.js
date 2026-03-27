@@ -2,6 +2,7 @@ import express from "express";
 import Status from "../models/Status.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../utils/upload.js";
+import { storeMediaFile } from "../utils/mediaStore.js";
 
 const router = express.Router();
 
@@ -43,8 +44,9 @@ router.post(
       if (text) { statusData.text = text; statusData.textBg = textBg || "#00a884"; }
       if (req.file) {
         const isVideo = req.file.mimetype.startsWith("video/");
+        const mediaUrl = await storeMediaFile(req.file, { folder: "chatapp/status" });
         statusData.media = {
-          url: `/uploads/${req.file.filename}`,
+          url: mediaUrl,
           type: isVideo ? "video" : "image",
         };
       }
