@@ -126,6 +126,8 @@ export default function ChatPage() {
     useChatStore.setState({ activeConversation: null });
     setShowAiChat(true);
   };
+  const isPrimaryChatWindowMounted = mainTab === "chats" && !!activeConversation && !showAiChat;
+  const shouldMountBackgroundCallListener = !isPrimaryChatWindowMounted;
 
   return (
     <div className="h-screen w-screen bg-[#111b21]">
@@ -182,6 +184,7 @@ export default function ChatPage() {
           onDeleted={fetchStatuses}
         />
       )}
+      {shouldMountBackgroundCallListener && <ChatWindow listenerOnly />}
     </div>
   );
 }

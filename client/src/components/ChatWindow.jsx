@@ -40,7 +40,7 @@ const resolveAvatar = (src) => {
   return resolveMediaUrl(src);
 };
 
-export default function ChatWindow() {
+export default function ChatWindow({ listenerOnly = false }) {
   const {
     activeConversation,
     conversations,
@@ -535,6 +535,28 @@ export default function ChatWindow() {
       endLocalCallState();
     };
   }, [endLocalCallState]);
+
+  if (listenerOnly) {
+    return (callState !== "idle" || incomingCall) ? (
+      <CallOverlay
+        callState={callState}
+        callType={callType}
+        incomingCall={incomingCall}
+        peer={activePeer}
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        onAccept={acceptIncomingCall}
+        onDecline={declineIncomingCall}
+        onHangup={hangupCall}
+        onToggleMute={toggleMute}
+        onToggleCamera={toggleCamera}
+        isMicMuted={isMicMuted}
+        isCamOff={isCamOff}
+      />
+    ) : null;
+  }
 
   return (
     <div className="flex h-full min-w-0 relative">
