@@ -41,7 +41,17 @@ const resolveAvatar = (src) => {
 };
 
 export default function ChatWindow() {
-  const { activeConversation, messages, loading, sendMessage, typingUsers, onlineUsers, logCall } = useChatStore();
+  const {
+    activeConversation,
+    conversations,
+    messages,
+    loading,
+    sendMessage,
+    typingUsers,
+    onlineUsers,
+    logCall,
+    setActiveConversation,
+  } = useChatStore();
   const { user } = useAuthStore();
 
   const [text, setText] = useState("");
@@ -294,6 +304,7 @@ export default function ChatWindow() {
         callType: type,
         startedAt: Date.now(),
         logged: false,
+        direction: "outgoing",
       };
 
       const pc = createPeerConnection(otherParticipant._id);
@@ -348,6 +359,13 @@ export default function ChatWindow() {
         username: incomingCall.fromName,
         avatar: incomingCall.fromAvatar,
       });
+      callMetaRef.current = {
+        conversationId: incomingCall.conversationId,
+        callType: incomingCall.callType || "audio",
+        startedAt: Date.now(),
+        logged: false,
+        direction: "incoming",
+      };
 
       const pc = createPeerConnection(incomingCall.fromUserId);
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -387,11 +405,12 @@ export default function ChatWindow() {
   };
 
   const hangupCall = () => {
+    const convId = callMetaRef.current?.conversationId || activeConversation?._id;
     if (activePeer?.userId) {
       const socket = getSocket();
       socket?.emit("call:end", {
         toUserId: activePeer.userId,
-        payload: { reason: "ended", conversationId: activeConversation?._id },
+        payload: { reason: "ended", conversationId: convId },
       });
     }
     persistCallLog(callState === "in-call" ? "completed" : "cancelled");
@@ -429,6 +448,11 @@ export default function ChatWindow() {
         return;
       }
 
+      if (payload?.conversationId && payload.conversationId !== activeConversation?._id) {
+        const targetConv = useChatStore.getState().conversations.find((c) => c._id === payload.conversationId);
+        if (targetConv) setActiveConversation(targetConv);
+      }
+
       setIncomingCall({
         fromUserId: payload.fromUserId,
         fromName: payload.fromName || "Unknown",
@@ -439,6 +463,13 @@ export default function ChatWindow() {
       });
       setCallType(payload.callType || "audio");
       setCallState("ringing");
+      callMetaRef.current = {
+        conversationId: payload.conversationId,
+        callType: payload.callType || "audio",
+        startedAt: Date.now(),
+        logged: false,
+        direction: "incoming",
+      };
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = setTimeout(() => {
         socket.emit("call:end", {
@@ -497,7 +528,7 @@ export default function ChatWindow() {
       socket.off("call:ice", onIce);
       socket.off("call:end", onEnd);
     };
-  }, [callState, endLocalCallState, persistCallLog]);
+  }, [activeConversation?._id, callState, endLocalCallState, persistCallLog, setActiveConversation, conversations]);
 
   useEffect(() => {
     return () => {
