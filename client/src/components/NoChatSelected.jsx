@@ -1,6 +1,10 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
 
 export default function NoChatSelected({ onOpenAi = () => {} }) {
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
   const platform = useMemo(() => {
     const ua = (navigator.userAgent || "").toLowerCase();
     const isWindows = ua.includes("windows");
@@ -29,6 +33,11 @@ export default function NoChatSelected({ onOpenAi = () => {} }) {
     };
   }, []);
 
+  const handleStoreClick = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="flex-1 bg-[#0b0f13] flex items-center justify-center p-6 sm:p-10">
       <div className="w-full max-w-[470px]">
@@ -50,7 +59,7 @@ export default function NoChatSelected({ onOpenAi = () => {} }) {
           </p>
 
           <button
-            onClick={() => { window.location.href = platform.url; }}
+            onClick={handleStoreClick}
             className="h-[50px] px-8 rounded-full bg-[#0e6a46] hover:bg-[#0f7b52] text-[#d4f5dc] text-[25px] font-semibold transition"
           >
             {platform.cta}
