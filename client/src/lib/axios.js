@@ -5,7 +5,7 @@ const SERVER_URL = resolveServerUrl();
 
 const api = axios.create({
   baseURL: `${SERVER_URL}/api`,
-  timeout: 30000, // 30s — handles Render cold start without hanging forever
+  timeout: 70000, // Render free cold starts can take >30s
 });
 
 // Attach JWT token to every request

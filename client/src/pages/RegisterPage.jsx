@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
-import api from "../lib/axios";
+import api, { SERVER_URL } from "../lib/axios";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
@@ -28,7 +28,11 @@ export default function RegisterPage() {
         err?.response?.data?.message ||
         err?.message ||
         "Registration failed. Please try again.";
-      toast.error(message, { id: "register-error" });
+      const display =
+        message.toLowerCase().includes("cannot reach server")
+          ? `${message} (Backend: ${SERVER_URL})`
+          : message;
+      toast.error(display, { id: "register-error" });
     } finally {
       setLoading(false);
     }
