@@ -40,6 +40,21 @@ const resolveAvatar = (src) => {
   return resolveMediaUrl(src);
 };
 
+const normalizeSdpPayload = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object") return parsed;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === "object") return value;
+  return null;
+};
+
 export default function ChatWindow({ listenerOnly = false }) {
   const {
     activeConversation,
@@ -203,11 +218,12 @@ export default function ChatWindow({ listenerOnly = false }) {
 
     pc.onicecandidate = (event) => {
       if (!event.candidate || !socket) return;
+      const conversationId = callMetaRef.current?.conversationId || activeConversation?._id;
       socket.emit("call:ice", {
         toUserId: targetUserId,
         payload: {
           candidate: event.candidate,
-          conversationId: activeConversation?._id,
+          conversationId,
         },
       });
     };
@@ -346,10 +362,27 @@ export default function ChatWindow({ listenerOnly = false }) {
 
     try {
       const wantsVideo = incomingCall.callType === "video";
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: wantsVideo,
-      });
+      const remoteOffer = normalizeSdpPayload(incomingCall.sdp);
+      if (!remoteOffer?.type || !remoteOffer?.sdp) {
+        throw new Error("Invalid call offer");
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: wantsVideo,
+        });
+      } catch (mediaError) {
+        // If video capture fails, still allow receiver to join with audio.
+        if (!wantsVideo) throw mediaError;
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true,
+        });
+        setIsCamOff(true);
+        toast("Camera unavailable. Joined with audio only.");
+      }
 
       setCallType(incomingCall.callType);
       setLocalStream(stream);
@@ -368,9 +401,11 @@ export default function ChatWindow({ listenerOnly = false }) {
       };
 
       const pc = createPeerConnection(incomingCall.fromUserId);
+      await pc.setRemoteDescription(remoteOffer);
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.sdp));
+      if (wantsVideo && stream.getVideoTracks().length === 0) {
+        pc.addTransceiver("video", { direction: "recvonly" });
+      }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -386,7 +421,8 @@ export default function ChatWindow({ listenerOnly = false }) {
       clearTimeout(callTimeoutRef.current);
       setIncomingCall(null);
       setCallState("in-call");
-    } catch {
+    } catch (err) {
+      console.error("acceptIncomingCall failed", err);
       toast.error("Could not answer call.");
       endLocalCallState();
     }
