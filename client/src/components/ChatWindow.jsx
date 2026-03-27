@@ -305,10 +305,41 @@ export default function ChatWindow({ listenerOnly = false }) {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: type === "video",
-      });
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast.error("Calling is not supported in this browser/context.");
+        return;
+      }
+
+      let stream = null;
+      let fallbackNotice = "";
+      if (type === "video") {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true,
+          });
+        } catch {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: false,
+            });
+            fallbackNotice = "Camera unavailable. Starting call with audio only.";
+            setIsCamOff(true);
+          } catch {
+            fallbackNotice = "Mic/camera blocked. Starting receive-only call.";
+          }
+        }
+      } else {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: false,
+          });
+        } catch {
+          fallbackNotice = "Microphone blocked. Starting receive-only call.";
+        }
+      }
 
       setCallType(type);
       setLocalStream(stream);
@@ -328,7 +359,17 @@ export default function ChatWindow({ listenerOnly = false }) {
       };
 
       const pc = createPeerConnection(otherParticipant._id);
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      if (stream) {
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      }
+      const hasVideo = stream?.getVideoTracks?.().length > 0;
+      const hasAudio = stream?.getAudioTracks?.().length > 0;
+      if (type === "video" && !hasVideo) {
+        pc.addTransceiver("video", { direction: "recvonly" });
+      }
+      if (!hasAudio) {
+        pc.addTransceiver("audio", { direction: "recvonly" });
+      }
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -344,6 +385,7 @@ export default function ChatWindow({ listenerOnly = false }) {
           fromAvatar: user?.avatar,
         },
       });
+      if (fallbackNotice) toast(fallbackNotice);
 
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = setTimeout(() => {
@@ -356,7 +398,7 @@ export default function ChatWindow({ listenerOnly = false }) {
         endLocalCallState();
       }, CALL_RING_TIMEOUT_MS);
     } catch {
-      toast.error("Could not start call. Please allow microphone/camera access.");
+      toast.error("Could not start call.");
       endLocalCallState();
     }
   };
