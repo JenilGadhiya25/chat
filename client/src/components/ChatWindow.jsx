@@ -51,7 +51,13 @@ const normalizeSdpPayload = (value) => {
       return null;
     }
   }
-  if (typeof value === "object") return value;
+  if (typeof value === "object") {
+    if (value.type && value.sdp) return value;
+    if (value.description?.type && value.description?.sdp) return value.description;
+    if (value.offer?.type && value.offer?.sdp) return value.offer;
+    if (value.answer?.type && value.answer?.sdp) return value.answer;
+    return value;
+  }
   return null;
 };
 
@@ -102,6 +108,7 @@ export default function ChatWindow({ listenerOnly = false }) {
   const typingTimeout = useRef(null);
   const fileInputRef = useRef(null);
   const callTimeoutRef = useRef(null);
+  const isAnsweringRef = useRef(false);
 
   const chatBg = resolveBg(user?.chatBackground);
   const otherParticipant = activeConversation?.isGroup
@@ -480,12 +487,19 @@ export default function ChatWindow({ listenerOnly = false }) {
   };
 
   const acceptIncomingCall = async () => {
-    if (!incomingCall) return;
+    if (!incomingCall || isAnsweringRef.current) return;
+    isAnsweringRef.current = true;
+    const offerSnapshot = { ...incomingCall };
 
     try {
-      const wantsVideo = incomingCall.callType === "video";
-      const remoteOffer = normalizeSdpPayload(incomingCall.sdp);
-      if (!remoteOffer?.type || !remoteOffer?.sdp) {
+      const wantsVideo = offerSnapshot.callType === "video";
+      const remoteOfferRaw = normalizeSdpPayload(offerSnapshot.sdp);
+      const remoteOffer = remoteOfferRaw?.type
+        ? remoteOfferRaw
+        : remoteOfferRaw?.sdp
+        ? { ...remoteOfferRaw, type: "offer" }
+        : null;
+      if (!remoteOffer || !remoteOffer?.sdp) {
         throw new Error("Invalid call offer");
       }
 
@@ -517,26 +531,27 @@ export default function ChatWindow({ listenerOnly = false }) {
       setLocalStream(stream);
       setRemoteStream(null);
       setActivePeer({
-        userId: incomingCall.fromUserId,
-        username: incomingCall.fromName,
-        avatar: incomingCall.fromAvatar,
+        userId: offerSnapshot.fromUserId,
+        username: offerSnapshot.fromName,
+        avatar: offerSnapshot.fromAvatar,
       });
       callMetaRef.current = {
-        conversationId: incomingCall.conversationId,
-        callType: incomingCall.callType || "audio",
+        conversationId: offerSnapshot.conversationId,
+        callType: offerSnapshot.callType || "audio",
         startedAt: Date.now(),
         logged: false,
         direction: "incoming",
-        isGroup: !!incomingCall.isGroup,
-        initiatorId: incomingCall.fromUserId,
+        isGroup: !!offerSnapshot.isGroup,
+        initiatorId: offerSnapshot.fromUserId,
       };
 
-      const pc = createPeerConnection(incomingCall.fromUserId, {
-        username: incomingCall.fromName,
-        avatar: incomingCall.fromAvatar,
-        conversationId: incomingCall.conversationId,
+      clearPeerConnection(offerSnapshot.fromUserId);
+      const pc = createPeerConnection(offerSnapshot.fromUserId, {
+        username: offerSnapshot.fromName,
+        avatar: offerSnapshot.fromAvatar,
+        conversationId: offerSnapshot.conversationId,
       });
-      await pc.setRemoteDescription(remoteOffer);
+      await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
       if (stream) {
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
       } else {
@@ -550,27 +565,28 @@ export default function ChatWindow({ listenerOnly = false }) {
 
       const socket = getSocket();
       socket?.emit("call:answer", {
-        toUserId: incomingCall.fromUserId,
+        toUserId: offerSnapshot.fromUserId,
         payload: {
-          sdp: answer,
-          conversationId: incomingCall.conversationId,
+          sdp: { type: answer.type, sdp: answer.sdp },
+          conversationId: offerSnapshot.conversationId,
         },
       });
 
       clearTimeout(callTimeoutRef.current);
       setIncomingCall(null);
       setCallState("in-call");
-      if (incomingCall.isGroup) {
-        const socket = getSocket();
+      if (offerSnapshot.isGroup) {
         socket?.emit("call:group:join", {
-          conversationId: incomingCall.conversationId,
-          callType: incomingCall.callType || "audio",
+          conversationId: offerSnapshot.conversationId,
+          callType: offerSnapshot.callType || "audio",
         });
       }
     } catch (err) {
       console.error("acceptIncomingCall failed", err);
       toast.error("Could not answer call.");
       endLocalCallState();
+    } finally {
+      isAnsweringRef.current = false;
     }
   };
 
