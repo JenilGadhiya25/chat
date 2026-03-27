@@ -87,10 +87,12 @@ export default function ChatWindow({ listenerOnly = false }) {
   const [activePeer, setActivePeer] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [remotePeers, setRemotePeers] = useState([]);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
 
-  const pcRef = useRef(null);
+  const pcMapRef = useRef(new Map());
+  const peerMetaRef = useRef(new Map());
   const callMetaRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -116,6 +118,7 @@ export default function ChatWindow({ listenerOnly = false }) {
   const convAvatar = activeConversation?.isGroup
     ? activeConversation?.groupAvatar
     : otherParticipant?.avatar;
+  const groupTargets = (activeConversation?.participants || []).filter((p) => p._id !== user?._id);
 
   const toDayKey = (value) => {
     const d = new Date(value);
@@ -167,13 +170,41 @@ export default function ChatWindow({ listenerOnly = false }) {
     }
   }, [remoteStream]);
 
-  const clearPeerConnection = useCallback(() => {
-    if (pcRef.current) {
-      pcRef.current.ontrack = null;
-      pcRef.current.onicecandidate = null;
-      pcRef.current.close();
-      pcRef.current = null;
-    }
+  const clearPeerConnection = useCallback((userId) => {
+    const pc = pcMapRef.current.get(userId);
+    if (!pc) return;
+    pc.ontrack = null;
+    pc.onicecandidate = null;
+    pc.close();
+    pcMapRef.current.delete(userId);
+    peerMetaRef.current.delete(userId);
+  }, []);
+
+  const clearAllPeerConnections = useCallback(() => {
+    [...pcMapRef.current.keys()].forEach((uid) => clearPeerConnection(uid));
+    pcMapRef.current.clear();
+    peerMetaRef.current.clear();
+  }, [clearPeerConnection]);
+
+  const upsertRemotePeer = useCallback((userId, stream, meta = {}) => {
+    if (!userId || !stream) return;
+    setRemotePeers((prev) => {
+      const idx = prev.findIndex((p) => p.userId === userId);
+      const nextPeer = {
+        userId,
+        stream,
+        username: meta.username || prev[idx]?.username || "Unknown",
+        avatar: meta.avatar || prev[idx]?.avatar || "",
+      };
+      if (idx === -1) return [...prev, nextPeer];
+      const clone = [...prev];
+      clone[idx] = nextPeer;
+      return clone;
+    });
+  }, []);
+
+  const removeRemotePeer = useCallback((userId) => {
+    setRemotePeers((prev) => prev.filter((p) => p.userId !== userId));
   }, []);
 
   const stopStream = (stream) => {
@@ -182,17 +213,18 @@ export default function ChatWindow({ listenerOnly = false }) {
 
   const endLocalCallState = useCallback(() => {
     clearTimeout(callTimeoutRef.current);
-    clearPeerConnection();
+    clearAllPeerConnections();
     stopStream(localStreamRef.current);
     stopStream(remoteStreamRef.current);
     setLocalStream(null);
     setRemoteStream(null);
+    setRemotePeers([]);
     setIncomingCall(null);
     setActivePeer(null);
     setIsMicMuted(false);
     setIsCamOff(false);
     setCallState("idle");
-  }, [clearPeerConnection]);
+  }, [clearAllPeerConnections]);
 
   const persistCallLog = useCallback(async (status) => {
     const meta = callMetaRef.current;
@@ -216,39 +248,56 @@ export default function ChatWindow({ listenerOnly = false }) {
     }
   }, [logCall]);
 
-  const createPeerConnection = useCallback((targetUserId) => {
+  const createPeerConnection = useCallback((targetUserId, meta = {}) => {
     const socket = getSocket();
     const pc = new RTCPeerConnection(ICE_SERVERS);
+    const conversationId = callMetaRef.current?.conversationId || activeConversation?._id;
+    peerMetaRef.current.set(targetUserId, {
+      conversationId,
+      username: meta.username,
+      avatar: meta.avatar,
+    });
 
     pc.onicecandidate = (event) => {
       if (!event.candidate || !socket) return;
-      const conversationId = callMetaRef.current?.conversationId || activeConversation?._id;
+      const pcMeta = peerMetaRef.current.get(targetUserId) || {};
       socket.emit("call:ice", {
         toUserId: targetUserId,
         payload: {
           candidate: event.candidate,
-          conversationId,
+          conversationId: pcMeta.conversationId || conversationId,
         },
       });
     };
 
     pc.ontrack = (event) => {
       const [stream] = event.streams;
-      if (stream) setRemoteStream(stream);
+      if (!stream) return;
+      if (!remoteStreamRef.current) setRemoteStream(stream);
+      const pcMeta = peerMetaRef.current.get(targetUserId) || {};
+      upsertRemotePeer(targetUserId, stream, pcMeta);
     };
 
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
-      if (state === "failed" || state === "disconnected") {
-        toast.error("Call connection lost");
-        persistCallLog("cancelled");
-        endLocalCallState();
+      if (state === "failed" || state === "disconnected" || state === "closed") {
+        clearPeerConnection(targetUserId);
+        removeRemotePeer(targetUserId);
+        if (!callMetaRef.current?.isGroup) {
+          toast.error("Call connection lost");
+          persistCallLog("cancelled");
+          endLocalCallState();
+        } else if (pcMapRef.current.size === 0 && callState === "in-call") {
+          toast("Group call ended");
+          persistCallLog("completed");
+          endLocalCallState();
+        }
       }
     };
 
-    pcRef.current = pc;
+    pcMapRef.current.set(targetUserId, pc);
     return pc;
-  }, [activeConversation?._id, endLocalCallState, persistCallLog]);
+  }, [activeConversation?._id, callState, clearPeerConnection, endLocalCallState, persistCallLog, removeRemotePeer, upsertRemotePeer]);
 
   const emitTyping = useCallback(() => {
     if (!activeConversation?._id) return;
@@ -299,8 +348,12 @@ export default function ChatWindow({ listenerOnly = false }) {
   };
 
   const startCall = async (type) => {
-    if (!otherParticipant || activeConversation?.isGroup) {
-      toast.error("Calls are available for 1:1 chats only");
+    const isGroupCall = !!activeConversation?.isGroup;
+    const targets = isGroupCall
+      ? groupTargets
+      : (otherParticipant ? [otherParticipant] : []);
+    if (!targets.length) {
+      toast.error(isGroupCall ? "No participants available for group call." : "No user available for call.");
       return;
     }
 
@@ -344,11 +397,18 @@ export default function ChatWindow({ listenerOnly = false }) {
       setCallType(type);
       setLocalStream(stream);
       setRemoteStream(null);
-      setActivePeer({
-        userId: otherParticipant._id,
-        username: otherParticipant.username,
-        avatar: otherParticipant.avatar,
-      });
+      setRemotePeers([]);
+      setActivePeer(isGroupCall
+        ? {
+            userId: activeConversation?._id,
+            username: activeConversation?.groupName || "Group call",
+            avatar: activeConversation?.groupAvatar || "",
+          }
+        : {
+            userId: otherParticipant._id,
+            username: otherParticipant.username,
+            avatar: otherParticipant.avatar,
+          });
       setCallState("calling");
       callMetaRef.current = {
         conversationId: activeConversation?._id,
@@ -356,43 +416,59 @@ export default function ChatWindow({ listenerOnly = false }) {
         startedAt: Date.now(),
         logged: false,
         direction: "outgoing",
+        isGroup: isGroupCall,
+        initiatorId: user?._id,
       };
-
-      const pc = createPeerConnection(otherParticipant._id);
-      if (stream) {
-        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-      }
+      const socket = getSocket();
       const hasVideo = stream?.getVideoTracks?.().length > 0;
       const hasAudio = stream?.getAudioTracks?.().length > 0;
-      if (type === "video" && !hasVideo) {
-        pc.addTransceiver("video", { direction: "recvonly" });
-      }
-      if (!hasAudio) {
-        pc.addTransceiver("audio", { direction: "recvonly" });
-      }
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      const socket = getSocket();
-      socket?.emit("call:offer", {
-        toUserId: otherParticipant._id,
-        payload: {
-          sdp: offer,
-          callType: type,
+      for (const target of targets) {
+        const pc = createPeerConnection(target._id, {
+          username: target.username,
+          avatar: target.avatar,
           conversationId: activeConversation?._id,
-          fromName: user?.username,
-          fromAvatar: user?.avatar,
-        },
-      });
+        });
+        if (stream) {
+          stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+        }
+        if (type === "video" && !hasVideo) {
+          pc.addTransceiver("video", { direction: "recvonly" });
+        }
+        if (!hasAudio) {
+          pc.addTransceiver("audio", { direction: "recvonly" });
+        }
+        // eslint-disable-next-line no-await-in-loop
+        const offer = await pc.createOffer();
+        // eslint-disable-next-line no-await-in-loop
+        await pc.setLocalDescription(offer);
+        socket?.emit("call:offer", {
+          toUserId: target._id,
+          payload: {
+            sdp: offer,
+            callType: type,
+            conversationId: activeConversation?._id,
+            fromName: user?.username,
+            fromAvatar: user?.avatar,
+            isGroup: isGroupCall,
+          },
+        });
+      }
+      if (isGroupCall) {
+        socket?.emit("call:group:join", {
+          conversationId: activeConversation?._id,
+          callType: type,
+        });
+      }
       if (fallbackNotice) toast(fallbackNotice);
 
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = setTimeout(() => {
         toast.error("No answer");
-        socket?.emit("call:end", {
-          toUserId: otherParticipant._id,
-          payload: { reason: "missed", conversationId: activeConversation?._id },
+        targets.forEach((target) => {
+          socket?.emit("call:end", {
+            toUserId: target._id,
+            payload: { reason: "missed", conversationId: activeConversation?._id },
+          });
         });
         persistCallLog("missed");
         endLocalCallState();
@@ -413,7 +489,7 @@ export default function ChatWindow({ listenerOnly = false }) {
         throw new Error("Invalid call offer");
       }
 
-      let stream;
+      let stream = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -421,13 +497,20 @@ export default function ChatWindow({ listenerOnly = false }) {
         });
       } catch (mediaError) {
         // If video capture fails, still allow receiver to join with audio.
-        if (!wantsVideo) throw mediaError;
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: true,
-        });
-        setIsCamOff(true);
-        toast("Camera unavailable. Joined with audio only.");
+        if (!wantsVideo) {
+          toast("Microphone unavailable. Joining as receive-only.");
+        } else {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: false,
+            });
+            setIsCamOff(true);
+            toast("Camera unavailable. Joined with audio only.");
+          } catch {
+            toast("Mic/camera unavailable. Joining as receive-only.");
+          }
+        }
       }
 
       setCallType(incomingCall.callType);
@@ -444,12 +527,22 @@ export default function ChatWindow({ listenerOnly = false }) {
         startedAt: Date.now(),
         logged: false,
         direction: "incoming",
+        isGroup: !!incomingCall.isGroup,
+        initiatorId: incomingCall.fromUserId,
       };
 
-      const pc = createPeerConnection(incomingCall.fromUserId);
+      const pc = createPeerConnection(incomingCall.fromUserId, {
+        username: incomingCall.fromName,
+        avatar: incomingCall.fromAvatar,
+        conversationId: incomingCall.conversationId,
+      });
       await pc.setRemoteDescription(remoteOffer);
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-      if (wantsVideo && stream.getVideoTracks().length === 0) {
+      if (stream) {
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      } else {
+        pc.addTransceiver("audio", { direction: "recvonly" });
+      }
+      if (wantsVideo && (!stream || stream.getVideoTracks().length === 0)) {
         pc.addTransceiver("video", { direction: "recvonly" });
       }
       const answer = await pc.createAnswer();
@@ -467,6 +560,13 @@ export default function ChatWindow({ listenerOnly = false }) {
       clearTimeout(callTimeoutRef.current);
       setIncomingCall(null);
       setCallState("in-call");
+      if (incomingCall.isGroup) {
+        const socket = getSocket();
+        socket?.emit("call:group:join", {
+          conversationId: incomingCall.conversationId,
+          callType: incomingCall.callType || "audio",
+        });
+      }
     } catch (err) {
       console.error("acceptIncomingCall failed", err);
       toast.error("Could not answer call.");
@@ -488,8 +588,18 @@ export default function ChatWindow({ listenerOnly = false }) {
 
   const hangupCall = () => {
     const convId = callMetaRef.current?.conversationId || activeConversation?._id;
-    if (activePeer?.userId) {
-      const socket = getSocket();
+    const socket = getSocket();
+    if (callMetaRef.current?.isGroup) {
+      const targets = (activeConversation?.participants || [])
+        .filter((p) => p._id !== user?._id)
+        .map((p) => p._id);
+      targets.forEach((uid) => {
+        socket?.emit("call:end", {
+          toUserId: uid,
+          payload: { reason: "ended", conversationId: convId, isGroup: true },
+        });
+      });
+    } else if (activePeer?.userId) {
       socket?.emit("call:end", {
         toUserId: activePeer.userId,
         payload: { reason: "ended", conversationId: convId },
@@ -521,7 +631,46 @@ export default function ChatWindow({ listenerOnly = false }) {
     const socket = getSocket();
     if (!socket) return;
 
-    const onOffer = (payload) => {
+    const onOffer = async (payload) => {
+      const sameGroupCall =
+        !!payload?.isGroup &&
+        !!callMetaRef.current?.isGroup &&
+        payload?.conversationId === callMetaRef.current?.conversationId &&
+        callState !== "idle";
+      if (sameGroupCall) {
+        try {
+          const remoteOffer = normalizeSdpPayload(payload.sdp);
+          if (!remoteOffer?.type || !remoteOffer?.sdp) return;
+          const pc = createPeerConnection(payload.fromUserId, {
+            username: payload.fromName,
+            avatar: payload.fromAvatar,
+            conversationId: payload.conversationId,
+          });
+          await pc.setRemoteDescription(remoteOffer);
+          if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current));
+          } else {
+            pc.addTransceiver("audio", { direction: "recvonly" });
+            if ((payload.callType || "audio") === "video") {
+              pc.addTransceiver("video", { direction: "recvonly" });
+            }
+          }
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit("call:answer", {
+            toUserId: payload.fromUserId,
+            payload: {
+              sdp: answer,
+              conversationId: payload.conversationId,
+              isGroup: true,
+            },
+          });
+        } catch {
+          // ignore individual peer setup errors in group call
+        }
+        return;
+      }
+
       if (callState !== "idle") {
         socket.emit("call:end", {
           toUserId: payload.fromUserId,
@@ -542,6 +691,7 @@ export default function ChatWindow({ listenerOnly = false }) {
         sdp: payload.sdp,
         callType: payload.callType || "audio",
         conversationId: payload.conversationId,
+        isGroup: !!payload.isGroup,
       });
       setCallType(payload.callType || "audio");
       setCallState("ringing");
@@ -551,6 +701,8 @@ export default function ChatWindow({ listenerOnly = false }) {
         startedAt: Date.now(),
         logged: false,
         direction: "incoming",
+        isGroup: !!payload.isGroup,
+        initiatorId: payload.fromUserId,
       };
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = setTimeout(() => {
@@ -564,10 +716,25 @@ export default function ChatWindow({ listenerOnly = false }) {
     };
 
     const onAnswer = async (payload) => {
-      if (!pcRef.current) return;
+      const pc = pcMapRef.current.get(payload.fromUserId) || [...pcMapRef.current.values()][0];
+      if (!pc) return;
       try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        const remoteAnswer = normalizeSdpPayload(payload.sdp);
+        if (!remoteAnswer?.type || !remoteAnswer?.sdp) return;
+        await pc.setRemoteDescription(remoteAnswer);
         clearTimeout(callTimeoutRef.current);
+        if (payload?.fromUserId) {
+          const p =
+            (activeConversation?.participants || []).find((u) => u._id === payload.fromUserId) || null;
+          if (p) {
+            peerMetaRef.current.set(payload.fromUserId, {
+              ...(peerMetaRef.current.get(payload.fromUserId) || {}),
+              username: p.username,
+              avatar: p.avatar,
+              conversationId: payload.conversationId || activeConversation?._id,
+            });
+          }
+        }
         setCallState("in-call");
       } catch {
         toast.error("Call connection failed");
@@ -576,15 +743,64 @@ export default function ChatWindow({ listenerOnly = false }) {
     };
 
     const onIce = async (payload) => {
-      if (!pcRef.current || !payload?.candidate) return;
+      const pc = pcMapRef.current.get(payload.fromUserId) || [...pcMapRef.current.values()][0];
+      if (!pc || !payload?.candidate) return;
       try {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
       } catch {
         // Ignore invalid ICE candidates
       }
     };
 
+    const onGroupParticipantJoined = async (payload) => {
+      const meta = callMetaRef.current;
+      if (!meta?.isGroup) return;
+      if (meta.conversationId !== payload?.conversationId) return;
+      if (callState !== "in-call" && callState !== "calling") return;
+      if (!payload?.participantId || payload.participantId === user?._id) return;
+      if (pcMapRef.current.has(payload.participantId)) return;
+
+      try {
+        const pc = createPeerConnection(payload.participantId, {
+          username: payload.participantName,
+          avatar: payload.participantAvatar,
+          conversationId: payload.conversationId,
+        });
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current));
+        } else {
+          pc.addTransceiver("audio", { direction: "recvonly" });
+          if ((meta.callType || "audio") === "video") pc.addTransceiver("video", { direction: "recvonly" });
+        }
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit("call:offer", {
+          toUserId: payload.participantId,
+          payload: {
+            sdp: offer,
+            callType: meta.callType || "audio",
+            conversationId: payload.conversationId,
+            fromName: user?.username,
+            fromAvatar: user?.avatar,
+            isGroup: true,
+          },
+        });
+      } catch {
+        // ignore peer creation failure to keep existing call alive
+      }
+    };
+
     const onEnd = (payload) => {
+      if (callMetaRef.current?.isGroup && payload?.fromUserId) {
+        clearPeerConnection(payload.fromUserId);
+        removeRemotePeer(payload.fromUserId);
+        if (pcMapRef.current.size === 0 && callState === "in-call") {
+          toast("Group call ended");
+          persistCallLog("completed");
+          endLocalCallState();
+        }
+        return;
+      }
       if (payload?.reason === "busy") toast.error("User is busy on another call");
       if (payload?.reason === "declined") toast.error("Call was declined");
       if (payload?.reason === "unavailable") toast.error("User is offline or unavailable");
@@ -603,14 +819,16 @@ export default function ChatWindow({ listenerOnly = false }) {
     socket.on("call:answer", onAnswer);
     socket.on("call:ice", onIce);
     socket.on("call:end", onEnd);
+    socket.on("call:group:participant-joined", onGroupParticipantJoined);
 
     return () => {
       socket.off("call:offer", onOffer);
       socket.off("call:answer", onAnswer);
       socket.off("call:ice", onIce);
       socket.off("call:end", onEnd);
+      socket.off("call:group:participant-joined", onGroupParticipantJoined);
     };
-  }, [activeConversation?._id, callState, endLocalCallState, persistCallLog, setActiveConversation, conversations]);
+  }, [activeConversation?._id, activeConversation?.participants, callState, conversations, createPeerConnection, endLocalCallState, persistCallLog, removeRemotePeer, setActiveConversation, user?._id, user?.avatar, user?.username, clearPeerConnection]);
 
   useEffect(() => {
     return () => {
@@ -629,6 +847,7 @@ export default function ChatWindow({ listenerOnly = false }) {
         remoteVideoRef={remoteVideoRef}
         localStream={localStream}
         remoteStream={remoteStream}
+        remotePeers={remotePeers}
         onAccept={acceptIncomingCall}
         onDecline={declineIncomingCall}
         onHangup={hangupCall}
@@ -680,7 +899,7 @@ export default function ChatWindow({ listenerOnly = false }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => startCall("audio")}
-              disabled={!otherParticipant || activeConversation?.isGroup || callState !== "idle"}
+              disabled={(!otherParticipant && !activeConversation?.isGroup) || callState !== "idle"}
               className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 disabled:opacity-50"
               title="Voice call"
             >
@@ -690,7 +909,7 @@ export default function ChatWindow({ listenerOnly = false }) {
             </button>
             <button
               onClick={() => startCall("video")}
-              disabled={!otherParticipant || activeConversation?.isGroup || callState !== "idle"}
+              disabled={(!otherParticipant && !activeConversation?.isGroup) || callState !== "idle"}
               className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 disabled:opacity-50"
               title="Video call"
             >
@@ -875,6 +1094,7 @@ export default function ChatWindow({ listenerOnly = false }) {
           remoteVideoRef={remoteVideoRef}
           localStream={localStream}
           remoteStream={remoteStream}
+          remotePeers={remotePeers}
           onAccept={acceptIncomingCall}
           onDecline={declineIncomingCall}
           onHangup={hangupCall}
@@ -897,6 +1117,7 @@ function CallOverlay({
   remoteVideoRef,
   localStream,
   remoteStream,
+  remotePeers = [],
   onAccept,
   onDecline,
   onHangup,
@@ -912,6 +1133,7 @@ function CallOverlay({
   const showIncoming = callState === "ringing" && incomingCall;
   const showRemoteVideo = isVideo && remoteStream && !showIncoming;
   const showLocalVideo = isVideo && localStream && !showIncoming && !isCamOff;
+  const joinedCount = Math.max(1, remotePeers.length + 1);
 
   return (
     <div className="fixed inset-0 z-[250] bg-[#040712]">
@@ -935,7 +1157,7 @@ function CallOverlay({
                 ? `Incoming ${isVideo ? "video" : "voice"} call`
                 : callState === "calling"
                 ? "calling..."
-                : "in call"}
+                : `${joinedCount} participant${joinedCount > 1 ? "s" : ""} in call`}
             </p>
           </div>
         )}

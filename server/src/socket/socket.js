@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import Conversation from "../models/Conversation.js";
 
 // Map userId -> Set<socketId>
 const onlineUsers = new Map();
@@ -124,6 +125,33 @@ export const initSocket = (io) => {
 
     socket.on("call:end", ({ toUserId, payload }) => {
       emitToUser(io, toUserId, "call:end", { fromUserId: userId, ...payload });
+    });
+
+    // Group-call mesh helper:
+    // when one participant joins a group call, notify the rest so they can create peer offers to this participant.
+    socket.on("call:group:join", async ({ conversationId, callType }) => {
+      try {
+        if (!userId || !conversationId) return;
+        const conv = await Conversation.findById(conversationId).select("participants");
+        if (!conv) return;
+        const participantIds = (conv.participants || []).map((id) => id.toString());
+        if (!participantIds.includes(userId.toString())) return;
+
+        const joinedUser = await User.findById(userId).select("username avatar");
+        participantIds
+          .filter((pid) => pid !== userId.toString())
+          .forEach((pid) => {
+            emitToUser(io, pid, "call:group:participant-joined", {
+              conversationId,
+              callType: callType || "audio",
+              participantId: userId,
+              participantName: joinedUser?.username || "Unknown",
+              participantAvatar: joinedUser?.avatar || "",
+            });
+          });
+      } catch {
+        // no-op: group call should continue even if notification fails for some users
+      }
     });
 
     socket.on("disconnect", () => {
