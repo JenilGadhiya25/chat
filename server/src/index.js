@@ -19,6 +19,8 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const app = express();
 const httpServer = createServer(app);
 let serverStarted = false;
+let lastMongoError = null;
+let lastMongoAttemptAt = null;
 
 // Avoid mongoose buffering queries when DB is unavailable (prevents 10s buffering timeout errors)
 mongoose.set("bufferCommands", false);
@@ -82,6 +84,8 @@ app.get("/health", (_req, res) => {
     status: "ok",
     mongoReadyState: mongoose.connection.readyState,
     mongoConnected: mongoose.connection.readyState === 1,
+    lastMongoError,
+    lastMongoAttemptAt,
   });
 });
 
@@ -90,6 +94,8 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     mongoReadyState: mongoose.connection.readyState,
     mongoConnected: mongoose.connection.readyState === 1,
+    lastMongoError,
+    lastMongoAttemptAt,
   });
 });
 
@@ -125,11 +131,12 @@ initSocket(io);
 
 // Connect to DB then start server
 const MONGO_URI =
-  process.env.MONGO_URI ||
-  process.env.MONGODB_URI ||
-  "mongodb://127.0.0.1:27017/chatapp";
+  (process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/chatapp")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
 const PORT = process.env.PORT || 8000;
 const MONGO_RETRY_MS = Number(process.env.MONGO_RETRY_MS || 10000);
+const MONGO_FAMILY = Number(process.env.MONGO_FAMILY || 4);
 
 const startHttpServer = () => {
   if (serverStarted) return;
@@ -142,13 +149,17 @@ const startHttpServer = () => {
 const connectMongoWithRetry = async () => {
   if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) return;
   try {
+    lastMongoAttemptAt = new Date().toISOString();
     await mongoose.connect(MONGO_URI, {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
+      family: MONGO_FAMILY,
     });
+    lastMongoError = null;
     console.log("✅ MongoDB connected:", MONGO_URI.split("@").pop() || MONGO_URI);
   } catch (err) {
-    console.error("❌ MongoDB connection failed:", err.message);
+    lastMongoError = err?.message || "Unknown Mongo connection error";
+    console.error("❌ MongoDB connection failed:", lastMongoError);
     console.log(`↻ Retrying MongoDB connection in ${MONGO_RETRY_MS / 1000}s...`);
     setTimeout(connectMongoWithRetry, MONGO_RETRY_MS);
   }
@@ -160,7 +171,8 @@ mongoose.connection.on("disconnected", () => {
 });
 
 mongoose.connection.on("error", (err) => {
-  console.error("❌ MongoDB runtime error:", err.message);
+  lastMongoError = err?.message || "Unknown Mongo runtime error";
+  console.error("❌ MongoDB runtime error:", lastMongoError);
 });
 
 startHttpServer();
