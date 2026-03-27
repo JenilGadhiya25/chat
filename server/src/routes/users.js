@@ -3,8 +3,18 @@ import User from "../models/User.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../utils/upload.js";
 import { storeMediaFile } from "../utils/mediaStore.js";
+import { getIO } from "../socket/socket.js";
 
 const router = express.Router();
+
+const toPublicUser = (userDoc) => ({
+  _id: userDoc?._id,
+  username: userDoc?.username,
+  avatar: userDoc?.avatar,
+  bio: userDoc?.bio,
+  isOnline: userDoc?.isOnline,
+  lastSeen: userDoc?.lastSeen,
+});
 
 // GET /api/users - search users
 router.get("/", protect, async (req, res) => {
@@ -27,7 +37,9 @@ router.get("/", protect, async (req, res) => {
 router.put("/avatar", protect, async (req, res) => {
   try {
     const { avatar } = req.body;
-    const user = await User.findByIdAndUpdate(req.user._id, { avatar }, { new: true });
+    const user = await User.findByIdAndUpdate(req.user._id, { avatar }, { new: true }).select("-password");
+    const io = getIO();
+    if (io && user) io.emit("user:updated", toPublicUser(user));
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -104,6 +116,9 @@ router.put(
         new: true,
         runValidators: true,
       }).select("-password");
+
+      const io = getIO();
+      if (io && user) io.emit("user:updated", toPublicUser(user));
 
       res.json(user);
     } catch (err) {

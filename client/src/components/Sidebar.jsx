@@ -6,6 +6,7 @@ import Avatar from "./Avatar";
 import SettingsModal from "./SettingsModal";
 import CreateGroupModal from "./CreateGroupModal";
 import { applyTheme, isDarkModeEnabled, subscribeTheme } from "../lib/theme";
+import { getSocket } from "../lib/socket";
 export default function Sidebar({
   mainTab = "chats",
   aiOpen = false,
@@ -40,6 +41,19 @@ export default function Sidebar({
 
   useEffect(() => {
     api.get("/users").then(({ data }) => setAllUsers(data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onUserUpdated = (updatedUser) => {
+      if (!updatedUser?._id) return;
+      setAllUsers((prev) =>
+        prev.map((u) => (u._id === updatedUser._id ? { ...u, ...updatedUser } : u))
+      );
+    };
+    socket.on("user:updated", onUserUpdated);
+    return () => socket.off("user:updated", onUserUpdated);
   }, []);
 
   useEffect(() => {

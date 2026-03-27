@@ -35,6 +35,14 @@ export const useAuthStore = create((set, get) => ({
     return data;
   },
 
+  syncUserFromRealtime: (updatedUser) => {
+    const { user } = get();
+    if (!user?._id || user._id !== updatedUser?._id) return;
+    const merged = { ...user, ...updatedUser };
+    localStorage.setItem("user", JSON.stringify(merged));
+    set({ user: merged });
+  },
+
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");

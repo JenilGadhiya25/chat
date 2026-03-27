@@ -118,6 +118,39 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
+  syncUserInCallLogs: (updatedUser) => {
+    if (!updatedUser?._id) return;
+    set((s) => ({
+      callLogs: s.callLogs.map((log) => {
+        const initiatedBy =
+          log?.initiatedBy?._id === updatedUser._id
+            ? { ...log.initiatedBy, ...updatedUser }
+            : log?.initiatedBy;
+
+        const conv = log?.conversationId;
+        if (!conv) return { ...log, initiatedBy };
+
+        return {
+          ...log,
+          initiatedBy,
+          conversationId: {
+            ...conv,
+            participants: conv.participants?.map((p) =>
+              p?._id === updatedUser._id ? { ...p, ...updatedUser } : p
+            ),
+            admins: conv.admins?.map((a) =>
+              a?._id === updatedUser._id ? { ...a, ...updatedUser } : a
+            ),
+            createdBy:
+              conv.createdBy?._id === updatedUser._id
+                ? { ...conv.createdBy, ...updatedUser }
+                : conv.createdBy,
+          },
+        };
+      }),
+    }));
+  },
+
   pinConversation: async (convId) => {
     const { data } = await api.post(`/messages/conversations/${convId}/pin`);
     set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));

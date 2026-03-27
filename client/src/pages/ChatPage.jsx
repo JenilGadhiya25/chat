@@ -28,7 +28,10 @@ export default function ChatPage() {
     callLogs,
     fetchCallLogs,
     conversations,
+    syncUserInConversations,
+    syncUserInCallLogs,
   } = useChatStore();
+  const { syncUserFromRealtime } = useAuthStore();
 
   // Lifted tab state — sidebar reads it, main panel reacts to it
   const [mainTab, setMainTab] = useState("chats");
@@ -68,6 +71,31 @@ export default function ChatPage() {
     const handleStopTyping = ({ conversationId, userId }) => clearTyping(conversationId, userId);
     const handleEdited     = (msg) => updateEditedMessage(msg);
     const handleReaction   = (msg) => updateMessageReaction(msg);
+    const handleUserUpdated = (updatedUser) => {
+      if (!updatedUser?._id) return;
+      syncUserInConversations(updatedUser);
+      syncUserInCallLogs(updatedUser);
+      syncUserFromRealtime(updatedUser);
+      setStatusGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          user:
+            group.user?._id === updatedUser._id
+              ? { ...group.user, ...updatedUser }
+              : group.user,
+          items: (group.items || []).map((item) => ({
+            ...item,
+            user:
+              item.user?._id === updatedUser._id
+                ? { ...item.user, ...updatedUser }
+                : item.user,
+            viewers: (item.viewers || []).map((v) =>
+              (v?._id || v) === updatedUser._id ? { ...v, ...updatedUser } : v
+            ),
+          })),
+        }))
+      );
+    };
 
     socket.on("onlineUsers",   handleOnlineUsers);
     socket.on("newMessage",    handleNewMessage);
@@ -75,6 +103,7 @@ export default function ChatPage() {
     socket.on("stopTyping",    handleStopTyping);
     socket.on("messageEdited", handleEdited);
     socket.on("messageReaction", handleReaction);
+    socket.on("user:updated", handleUserUpdated);
 
     return () => {
       socket.off("onlineUsers",   handleOnlineUsers);
@@ -83,6 +112,7 @@ export default function ChatPage() {
       socket.off("stopTyping",    handleStopTyping);
       socket.off("messageEdited", handleEdited);
       socket.off("messageReaction", handleReaction);
+      socket.off("user:updated", handleUserUpdated);
     };
   }, []);
 
