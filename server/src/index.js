@@ -18,6 +18,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 const httpServer = createServer(app);
+let serverStarted = false;
 
 // Avoid mongoose buffering queries when DB is unavailable (prevents 10s buffering timeout errors)
 mongoose.set("bufferCommands", false);
@@ -128,22 +129,39 @@ const MONGO_URI =
   process.env.MONGODB_URI ||
   "mongodb://127.0.0.1:27017/chatapp";
 const PORT = process.env.PORT || 8000;
+const MONGO_RETRY_MS = Number(process.env.MONGO_RETRY_MS || 10000);
 
-mongoose
-  .connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 10000,
-    socketTimeoutMS: 45000,
-  })
-  .then(() => {
+const startHttpServer = () => {
+  if (serverStarted) return;
+  serverStarted = true;
+  httpServer.listen(PORT, "0.0.0.0", () =>
+    console.log(`🚀 Server running on port ${PORT}`)
+  );
+};
+
+const connectMongoWithRetry = async () => {
+  if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) return;
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
     console.log("✅ MongoDB connected:", MONGO_URI.split("@").pop() || MONGO_URI);
-    httpServer.listen(PORT, "0.0.0.0", () =>
-      console.log(`🚀 Server running on port ${PORT}`)
-    );
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error("❌ MongoDB connection failed:", err.message);
-    // Still bind the port so Render doesn't kill the process
-    httpServer.listen(PORT, "0.0.0.0", () =>
-      console.log(`⚠️  Server running WITHOUT database on port ${PORT}`)
-    );
-  });
+    console.log(`↻ Retrying MongoDB connection in ${MONGO_RETRY_MS / 1000}s...`);
+    setTimeout(connectMongoWithRetry, MONGO_RETRY_MS);
+  }
+};
+
+mongoose.connection.on("disconnected", () => {
+  console.warn("⚠️ MongoDB disconnected. Retrying...");
+  setTimeout(connectMongoWithRetry, 2000);
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("❌ MongoDB runtime error:", err.message);
+});
+
+startHttpServer();
+connectMongoWithRetry();
