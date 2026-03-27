@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import authRoutes from "./routes/auth.js";
@@ -16,6 +17,30 @@ import { initSocket } from "./socket/socket.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
+const readRenderSecret = (name) => {
+  try {
+    const secretPath = `/etc/secrets/${name}`;
+    if (!fs.existsSync(secretPath)) return "";
+    return fs.readFileSync(secretPath, "utf8").trim();
+  } catch {
+    return "";
+  }
+};
+
+const getConfigValue = (name) => {
+  const envVal = (process.env[name] || "").trim().replace(/^['"]|['"]$/g, "");
+  if (envVal) return envVal;
+  return readRenderSecret(name);
+};
+
+// Support Render Secret Files fallback when env vars are not directly injected.
+for (const key of ["MONGO_URI", "MONGODB_URI", "JWT_SECRET", "CLIENT_URL", "CLIENT_URLS", "PORT", "MONGO_RETRY_MS", "MONGO_FAMILY"]) {
+  if (!process.env[key]) {
+    const fileVal = getConfigValue(key);
+    if (fileVal) process.env[key] = fileVal;
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
 let serverStarted = false;
@@ -26,8 +51,8 @@ let lastMongoAttemptAt = null;
 mongoose.set("bufferCommands", false);
 
 const configuredClientUrls = [
-  process.env.CLIENT_URL,
-  process.env.CLIENT_URLS,
+  getConfigValue("CLIENT_URL"),
+  getConfigValue("CLIENT_URLS"),
 ]
   .filter(Boolean)
   .flatMap((v) => String(v).split(","))
@@ -131,12 +156,12 @@ initSocket(io);
 
 // Connect to DB then start server
 const MONGO_URI =
-  (process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/chatapp")
-    .trim()
-    .replace(/^['"]|['"]$/g, "");
-const PORT = process.env.PORT || 8000;
-const MONGO_RETRY_MS = Number(process.env.MONGO_RETRY_MS || 10000);
-const MONGO_FAMILY = Number(process.env.MONGO_FAMILY || 4);
+  getConfigValue("MONGO_URI") ||
+  getConfigValue("MONGODB_URI") ||
+  "mongodb://127.0.0.1:27017/chatapp";
+const PORT = getConfigValue("PORT") || 8000;
+const MONGO_RETRY_MS = Number(getConfigValue("MONGO_RETRY_MS") || 10000);
+const MONGO_FAMILY = Number(getConfigValue("MONGO_FAMILY") || 4);
 
 const startHttpServer = () => {
   if (serverStarted) return;
