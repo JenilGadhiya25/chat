@@ -196,20 +196,22 @@ router.get("/:conversationId", protect, async (req, res) => {
 // POST /api/messages/:conversationId - send message
 router.post("/:conversationId", protect, upload.single("media"), async (req, res) => {
   try {
-    const { text, replyTo } = req.body;
+    const { text, replyTo, mediaUrl, mediaType, mediaName } = req.body;
     const mediaFile = req.file;
 
-    if (!text && !mediaFile)
+    if (!text && !mediaFile && !mediaUrl)
       return res.status(400).json({ message: "Message cannot be empty" });
 
-    const mediaData =
-      mediaFile
-        ? {
-            url: await storeMediaFile(mediaFile, { folder: "chatapp/messages" }),
-            type: mediaFile.mimetype.split("/")[0],
-            name: mediaFile.originalname,
-          }
-        : {};
+    // mediaUrl is used when forwarding an existing media message (no re-upload)
+    const mediaData = mediaFile
+      ? {
+          url: await storeMediaFile(mediaFile, { folder: "chatapp/messages" }),
+          type: mediaFile.mimetype.split("/")[0],
+          name: mediaFile.originalname,
+        }
+      : mediaUrl
+      ? { url: mediaUrl, type: mediaType || "image", name: mediaName || "media" }
+      : {};
 
     const message = await Message.create({
       conversationId: req.params.conversationId,

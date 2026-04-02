@@ -1319,8 +1319,11 @@ function ForwardModal({ message, conversations, onClose }) {
     if (!selected.length) return;
     setSending(true);
     try {
+      const forwardMedia = message.media?.url
+        ? { url: message.media.url, type: message.media.type, name: message.media.name }
+        : null;
       await Promise.all(selected.map((convId) =>
-        sendMessage(convId, message.text || "", null, null)
+        sendMessage(convId, message.text || "", null, null, forwardMedia)
       ));
       toast.success(`Forwarded to ${selected.length} chat${selected.length > 1 ? "s" : ""}`);
       onClose();
@@ -1341,9 +1344,16 @@ function ForwardModal({ message, conversations, onClose }) {
           </button>
         </div>
         <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-[#111b21]">
-          <p className="text-xs text-gray-500 dark:text-gray-400 truncate px-2">
-            "{message.text || "📎 Media"}"
-          </p>
+          {message.media?.url && message.media.type === "image" ? (
+            <div className="flex items-center gap-2 px-2 py-1">
+              <img src={resolveMediaUrl(message.media.url)} alt="media" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{message.text || "📷 Photo"}</p>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate px-2">
+              "{message.text || (message.media?.url ? "📎 Media" : "")}"
+            </p>
+          )}
         </div>
         <div className="max-h-72 overflow-y-auto">
           {conversations.map((conv) => (

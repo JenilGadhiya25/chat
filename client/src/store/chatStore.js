@@ -173,11 +173,17 @@ export const useChatStore = create((set, get) => ({
     set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));
   },
 
-  sendMessage: async (conversationId, text, mediaFile, replyToId) => {
+  sendMessage: async (conversationId, text, mediaFile, replyToId, forwardMedia) => {
     const formData = new FormData();
     if (text) formData.append("text", text);
     if (mediaFile) formData.append("media", mediaFile);
     if (replyToId) formData.append("replyTo", replyToId);
+    // forwardMedia = { url, type, name } for forwarding existing media
+    if (forwardMedia?.url) {
+      formData.append("mediaUrl", forwardMedia.url);
+      formData.append("mediaType", forwardMedia.type || "image");
+      formData.append("mediaName", forwardMedia.name || "media");
+    }
 
     const { data } = await api.post(`/messages/${conversationId}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
