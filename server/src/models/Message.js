@@ -19,6 +19,12 @@ const messageSchema = new mongoose.Schema(
         emoji: { type: String, required: true },
       },
     ],
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+      default: null,
+    },
+    pinnedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

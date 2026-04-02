@@ -174,6 +174,7 @@ router.get("/:conversationId", protect, async (req, res) => {
       deletedFor: { $ne: req.user._id },
     })
       .populate("sender", "username avatar")
+      .populate({ path: "replyTo", populate: { path: "sender", select: "username" } })
       .sort({ createdAt: 1 });
 
     // Mark messages as seen
@@ -195,7 +196,7 @@ router.get("/:conversationId", protect, async (req, res) => {
 // POST /api/messages/:conversationId - send message
 router.post("/:conversationId", protect, upload.single("media"), async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, replyTo } = req.body;
     const mediaFile = req.file;
 
     if (!text && !mediaFile)
@@ -215,9 +216,13 @@ router.post("/:conversationId", protect, upload.single("media"), async (req, res
       sender: req.user._id,
       text: text || "",
       media: mediaData,
+      replyTo: replyTo || null,
     });
 
     await message.populate("sender", "username avatar");
+    if (replyTo) {
+      await message.populate({ path: "replyTo", populate: { path: "sender", select: "username" } });
+    }
 
     // Update conversation lastMessage
     await Conversation.findByIdAndUpdate(req.params.conversationId, {
@@ -259,9 +264,53 @@ router.delete("/:messageId", protect, async (req, res) => {
   }
 });
 
-// PUT /api/messages/:messageId - edit message
-router.put("/:messageId", protect, async (req, res) => {
+// POST /api/messages/:messageId/pin — pin a message in its conversation
+router.post("/:messageId/pin", protect, async (req, res) => {
   try {
+    const message = await Message.findById(req.params.messageId);
+    if (!message) return res.status(404).json({ message: "Message not found" });
+    const conv = await Conversation.findOneAndUpdate(
+      { _id: message.conversationId, participants: req.user._id },
+      { $addToSet: { pinnedMessages: message._id } },
+      { new: true }
+    );
+    if (!conv) return res.status(403).json({ message: "Not a participant" });
+    message.pinnedAt = new Date();
+    await message.save();
+    await message.populate("sender", "username avatar");
+    // Notify all participants
+    const io = getIO();
+    if (io) {
+      conv.participants.forEach((pid) => emitToUser(io, pid.toString(), "messagePinned", message));
+    }
+    res.json(message);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// DELETE /api/messages/:messageId/pin — unpin a message
+router.delete("/:messageId/pin", protect, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.messageId);
+    if (!message) return res.status(404).json({ message: "Message not found" });
+    const conv = await Conversation.findOneAndUpdate(
+      { _id: message.conversationId, participants: req.user._id },
+      { $pull: { pinnedMessages: message._id } },
+      { new: true }
+    );
+    if (!conv) return res.status(403).json({ message: "Not a participant" });
+    message.pinnedAt = null;
+    await message.save();
+    await message.populate("sender", "username avatar");
+    const io = getIO();
+    if (io) {
+      conv.participants.forEach((pid) => emitToUser(io, pid.toString(), "messageUnpinned", message));
+    }
+    res.json(message);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// PUT /api/messages/:messageId - edit message
+router.put("/:messageId", protect, async (req, res) => {  try {
     const { text } = req.body;
     const message = await Message.findOne({
       _id: req.params.messageId,

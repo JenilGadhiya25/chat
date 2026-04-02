@@ -80,6 +80,8 @@ export default function ChatWindow({ listenerOnly = false }) {
   const [mediaPreview, setMediaPreview] = useState(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // message being replied to
+  const [forwardMsg, setForwardMsg] = useState(null); // message being forwarded
   const [enterSend, setEnterSend] = useState(() => {
     const raw = localStorage.getItem("settings_enter_send");
     return raw === null ? true : raw === "true";
@@ -367,11 +369,12 @@ export default function ChatWindow({ listenerOnly = false }) {
     if (!text.trim() && !mediaFile) return;
     setSending(true);
     try {
-      await sendMessage(activeConversation._id, text.trim(), mediaFile);
+      await sendMessage(activeConversation._id, text.trim(), mediaFile, replyingTo?._id);
       setText("");
       setMediaFile(null);
       setMediaPreview(null);
       setShowEmoji(false);
+      setReplyingTo(null);
       const socket = getSocket();
       socket?.emit("stopTyping", { conversationId: activeConversation._id, userId: user._id });
     } finally {
@@ -1102,7 +1105,10 @@ export default function ChatWindow({ listenerOnly = false }) {
                     </span>
                   </div>
                 )}
-                <MessageBubble message={msg} isOwn={msg.sender._id === user._id || msg.sender === user._id} />
+                <MessageBubble message={msg} isOwn={msg.sender._id === user._id || msg.sender === user._id}
+                  onReply={(m) => setReplyingTo(m)}
+                  onForward={(m) => setForwardMsg(m)}
+                />
               </div>
             );
           })}
@@ -1150,6 +1156,21 @@ export default function ChatWindow({ listenerOnly = false }) {
             </svg>
             <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">{mediaFile.name}</span>
             <button onClick={() => setMediaFile(null)} className="text-red-500 text-sm hover:text-red-600">Remove</button>
+          </div>
+        )}
+
+        {/* Reply preview bar */}
+        {replyingTo && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-[#f0f2f5] dark:bg-[#1f2c33] border-t border-gray-200 dark:border-gray-700">
+            <div className="flex-1 min-w-0 border-l-4 border-[#00a884] pl-3 py-1 bg-white/50 dark:bg-white/5 rounded-r-lg">
+              <p className="text-xs font-semibold text-[#00a884] truncate">{replyingTo.sender?.username || "You"}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {replyingTo.text || (replyingTo.media?.url ? "📎 Media" : "")}
+              </p>
+            </div>
+            <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+            </button>
           </div>
         )}
 
@@ -1250,6 +1271,15 @@ export default function ChatWindow({ listenerOnly = false }) {
 
       {showInfo && <ContactInfoPanel onClose={() => setShowInfo(false)} />}
 
+      {/* Forward message modal */}
+      {forwardMsg && (
+        <ForwardModal
+          message={forwardMsg}
+          conversations={useChatStore.getState().conversations}
+          onClose={() => setForwardMsg(null)}
+        />
+      )}
+
       {(callState !== "idle" || incomingCall) && (
         <CallOverlay
           callState={callState}
@@ -1270,6 +1300,69 @@ export default function ChatWindow({ listenerOnly = false }) {
           isCamOff={isCamOff}
         />
       )}
+    </div>
+  );
+}
+
+function ForwardModal({ message, conversations, onClose }) {
+  const { sendMessage } = useChatStore();
+  const [selected, setSelected] = useState([]);
+  const [sending, setSending] = useState(false);
+  const { user } = useAuthStore();
+
+  const getOther = (conv) => conv.participants?.find((p) => p._id !== user?._id);
+  const convName = (conv) => conv.isGroup ? conv.groupName : getOther(conv)?.username || "Unknown";
+
+  const toggle = (id) => setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
+
+  const handleForward = async () => {
+    if (!selected.length) return;
+    setSending(true);
+    try {
+      await Promise.all(selected.map((convId) =>
+        sendMessage(convId, message.text || "", null, null)
+      ));
+      toast.success(`Forwarded to ${selected.length} chat${selected.length > 1 ? "s" : ""}`);
+      onClose();
+    } catch {
+      toast.error("Forward failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[400] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#1f2c33] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="font-semibold text-gray-900 dark:text-white">Forward message</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+          </button>
+        </div>
+        <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-[#111b21]">
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate px-2">
+            "{message.text || "📎 Media"}"
+          </p>
+        </div>
+        <div className="max-h-72 overflow-y-auto">
+          {conversations.map((conv) => (
+            <button key={conv._id} onClick={() => toggle(conv._id)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#182229] transition text-left">
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selected.includes(conv._id) ? "bg-[#00a884] border-[#00a884]" : "border-gray-300 dark:border-gray-600"}`}>
+                {selected.includes(conv._id) && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>}
+              </div>
+              <span className="text-sm text-gray-800 dark:text-[#e9edef] truncate">{convName(conv)}</span>
+            </button>
+          ))}
+        </div>
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+          <button onClick={handleForward} disabled={!selected.length || sending}
+            className="w-full py-2.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold rounded-xl transition disabled:opacity-50 text-sm">
+            {sending ? "Forwarding…" : `Forward${selected.length ? ` (${selected.length})` : ""}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

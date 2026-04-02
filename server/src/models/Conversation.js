@@ -16,6 +16,7 @@ const conversationSchema = new mongoose.Schema(
     // Per-user pin/archive stored as arrays of userIds
     pinnedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     archivedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
   },
   { timestamps: true }
 );

@@ -173,10 +173,11 @@ export const useChatStore = create((set, get) => ({
     set((s) => ({ conversations: s.conversations.map((c) => c._id === convId ? data : c) }));
   },
 
-  sendMessage: async (conversationId, text, mediaFile) => {
+  sendMessage: async (conversationId, text, mediaFile, replyToId) => {
     const formData = new FormData();
     if (text) formData.append("text", text);
     if (mediaFile) formData.append("media", mediaFile);
+    if (replyToId) formData.append("replyTo", replyToId);
 
     const { data } = await api.post(`/messages/${conversationId}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -291,6 +292,18 @@ export const useChatStore = create((set, get) => ({
 
   unblockUser: async (userId) => {
     await api.post(`/messages/unblock/${userId}`);
+  },
+
+  pinMessage: async (messageId) => {
+    const { data } = await api.post(`/messages/${messageId}/pin`);
+    set((s) => ({ messages: s.messages.map((m) => m._id === messageId ? { ...m, pinnedAt: data.pinnedAt } : m) }));
+    return data;
+  },
+
+  unpinMessage: async (messageId) => {
+    const { data } = await api.delete(`/messages/${messageId}/pin`);
+    set((s) => ({ messages: s.messages.map((m) => m._id === messageId ? { ...m, pinnedAt: null } : m) }));
+    return data;
   },
 
   addGroupAdmin: async (convId, userId) => {
