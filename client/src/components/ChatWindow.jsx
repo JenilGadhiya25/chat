@@ -86,6 +86,10 @@ export default function ChatWindow({ listenerOnly = false }) {
   });
   const [isDark, setIsDark] = useState(() => isDarkModeEnabled());
   const [showInfo, setShowInfo] = useState(false);
+  const [showChatMenu, setShowChatMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const menuRef = useRef(null);
 
   const [callState, setCallState] = useState("idle"); // idle | calling | ringing | in-call
   const [callType, setCallType] = useState("audio"); // audio | video
@@ -153,6 +157,16 @@ export default function ChatWindow({ listenerOnly = false }) {
   }, [messages, isTyping]);
 
   useEffect(() => subscribeTheme(setIsDark), []);
+
+  // Close chat menu on outside click
+  useEffect(() => {
+    if (!showChatMenu) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowChatMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showChatMenu]);
 
   useEffect(() => {
     const sync = () => {
@@ -879,7 +893,7 @@ export default function ChatWindow({ listenerOnly = false }) {
     <div className="flex h-full min-w-0 relative">
       <div className="flex flex-col flex-1 min-w-0 bg-[#efeae2] dark:bg-gray-900">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#f0f2f5] dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#f0f2f5] dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 relative">
           <button
             className="sm:hidden p-1 -ml-1 text-gray-500 dark:text-gray-400"
             onClick={() => useChatStore.setState({ activeConversation: null })}
@@ -933,13 +947,100 @@ export default function ChatWindow({ listenerOnly = false }) {
                 <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
               </svg>
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400">
+            <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+              onClick={() => setShowChatMenu((v) => !v)}
+              title="More options"
+            >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
               </svg>
             </button>
+
+            {/* Dropdown menu */}
+            {showChatMenu && (
+              <div ref={menuRef}
+                className="absolute top-12 right-2 z-50 w-52 bg-white dark:bg-[#233138] rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 py-1 overflow-hidden"
+              >
+                {[
+                  {
+                    label: activeConversation?.isGroup ? "Group info" : "Contact info",
+                    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+                    action: () => { setShowInfo(true); setShowChatMenu(false); },
+                  },
+                  {
+                    label: "Search",
+                    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>,
+                    action: () => { setSearchOpen((v) => !v); setShowChatMenu(false); },
+                  },
+                  {
+                    label: "Mute notifications",
+                    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>,
+                    action: () => { toast("Mute notifications — coming soon"); setShowChatMenu(false); },
+                  },
+                  {
+                    label: "Close chat",
+                    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>,
+                    action: () => { useChatStore.setState({ activeConversation: null }); setShowChatMenu(false); },
+                  },
+                  {
+                    label: "Clear chat",
+                    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
+                    action: async () => {
+                      if (!window.confirm("Clear all messages in this chat?")) return;
+                      setShowChatMenu(false);
+                      try {
+                        await useChatStore.getState().deleteConversation(activeConversation._id);
+                        toast.success("Chat cleared");
+                      } catch { toast.error("Failed to clear chat"); }
+                    },
+                    danger: true,
+                  },
+                  ...(activeConversation?.isGroup ? [{
+                    label: "Exit group",
+                    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>,
+                    action: async () => {
+                      if (!window.confirm("Exit this group?")) return;
+                      setShowChatMenu(false);
+                      try {
+                        await useChatStore.getState().deleteConversation(activeConversation._id);
+                        toast.success("Left group");
+                      } catch { toast.error("Failed to exit group"); }
+                    },
+                    danger: true,
+                  }] : []),
+                ].map((item) => (
+                  <button key={item.label} onClick={item.action}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition hover:bg-gray-50 dark:hover:bg-[#182229] ${item.danger ? "text-red-500" : "text-gray-700 dark:text-[#e9edef]"}`}>
+                    <span className={item.danger ? "text-red-400" : "text-gray-400 dark:text-[#8696a0]"}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* In-chat search bar */}
+        {searchOpen && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-[#f0f2f5] dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
+            </svg>
+            <input autoFocus type="text" value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search in conversation…"
+              className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+              </button>
+            )}
+            <button onClick={() => { setSearchOpen(false); setSearchQuery(""); }} className="text-gray-400 hover:text-gray-600 ml-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        )}
 
         {/* Messages area */}
         <div
@@ -971,9 +1072,11 @@ export default function ChatWindow({ listenerOnly = false }) {
             </div>
           )}
 
-          {messages.map((msg, idx) => {
+          {messages
+            .filter((msg) => !searchQuery || msg.text?.toLowerCase().includes(searchQuery.toLowerCase()))
+            .map((msg, idx, arr) => {
             const currentKey = toDayKey(msg.createdAt);
-            const prevKey = idx > 0 ? toDayKey(messages[idx - 1].createdAt) : null;
+            const prevKey = idx > 0 ? toDayKey(arr[idx - 1].createdAt) : null;
             const showHeader = idx === 0 || currentKey !== prevKey;
             return (
               <div key={msg._id}>
