@@ -86,10 +86,15 @@ export default function ChatWindow({ listenerOnly = false }) {
   });
   const [isDark, setIsDark] = useState(() => isDarkModeEnabled());
   const [showInfo, setShowInfo] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const menuRef = useRef(null);
+  const attachMenuRef = useRef(null);
+  const photoVideoRef = useRef(null);
+  const documentRef = useRef(null);
+  const audioRef = useRef(null);
 
   const [callState, setCallState] = useState("idle"); // idle | calling | ringing | in-call
   const [callType, setCallType] = useState("audio"); // audio | video
@@ -167,6 +172,16 @@ export default function ChatWindow({ listenerOnly = false }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showChatMenu]);
+
+  // Close attach menu on outside click
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    const handler = (e) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target)) setShowAttachMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAttachMenu]);
 
   useEffect(() => {
     const sync = () => {
@@ -1160,13 +1175,45 @@ export default function ChatWindow({ listenerOnly = false }) {
             </svg>
           </button>
 
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileChange} />
+          {/* Attach menu */}
+          <div className="relative" ref={attachMenuRef}>
+            <button type="button" onClick={() => setShowAttachMenu((v) => !v)}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition" title="Attach">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            </button>
 
+            {showAttachMenu && (
+              <div className="absolute bottom-12 left-0 z-50 bg-white dark:bg-[#233138] rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 w-52 overflow-hidden">
+                {[
+                  { label: "Document", color: "bg-[#5157ae]", action: () => { documentRef.current?.click(); setShowAttachMenu(false); },
+                    icon: <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> },
+                  { label: "Photos & videos", color: "bg-[#bf59cf]", action: () => { photoVideoRef.current?.click(); setShowAttachMenu(false); },
+                    icon: <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> },
+                  { label: "Camera", color: "bg-[#e06c4a]", action: () => { const i=document.createElement("input"); i.type="file"; i.accept="image/*"; i.capture="environment"; i.onchange=(e)=>handleFileChange({target:e.target}); i.click(); setShowAttachMenu(false); },
+                    icon: <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg> },
+                  { label: "Audio", color: "bg-[#e05c7a]", action: () => { audioRef.current?.click(); setShowAttachMenu(false); },
+                    icon: <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg> },
+                  { label: "Contact", color: "bg-[#009de2]", action: () => { toast("Contact sharing coming soon"); setShowAttachMenu(false); },
+                    icon: <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg> },
+                  { label: "Poll", color: "bg-[#1fa855]", action: () => { toast("Poll feature coming soon"); setShowAttachMenu(false); },
+                    icon: <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg> },
+                ].map((item) => (
+                  <button key={item.label} type="button" onClick={item.action}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-[#182229] transition text-left">
+                    <div className={`w-9 h-9 rounded-full ${item.color} flex items-center justify-center flex-shrink-0`}>{item.icon}</div>
+                    <span className="text-sm text-gray-700 dark:text-[#e9edef] font-medium">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <input ref={photoVideoRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+            <input ref={documentRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" className="hidden" onChange={handleFileChange} />
+            <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={handleFileChange} />
+            <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileChange} />
+          </div>
           <input
             type="text"
             value={text}
